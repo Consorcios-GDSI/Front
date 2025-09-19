@@ -1,37 +1,37 @@
 {
   "compilerOptions": {
-    /* Objetivo y módulo */
+    /* 🎯 Objetivo y módulo */
     "target": "ES2022",
     "module": "ESNext",
 
-    /* Librerías disponibles en el proyecto */
+    /* 📚 Librerías disponibles en el proyecto */
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
-    /* Usar define para campos de clase (opcional, pero lo conservamos) */
+    /* ⚙️ Configuración de clases */
     "useDefineForClassFields": true,
 
-    /* Comprobaciones estrictas */
+    /* ✅ Comprobaciones estrictas */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    /* Ignorar chequear tipos de librerías externas */
+    /* 🚫 Ignorar chequeo de tipos en libs externas */
     "skipLibCheck": true,
 
-    /* React JSX */
+    /* ⚛️ JSX para React 17+ / 18 */
     "jsx": "react-jsx",
 
-    /* Bundler mode */
+    /* 📦 Bundler mode (Vite/Webpack/Parcel) */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    
-    /* Estas dos opciones pueden generar errores con JSX en React 18, mejor comentarlas */
+
+    /* ❌ Estas dos a veces rompen JSX en React 18 → las dejo comentadas */
     // "verbatimModuleSyntax": true,
     // "moduleDetection": "force",
 
-    /* No generar archivos JS */
+    /* ⛔ No emitir archivos JS (solo TS → bundler) */
     "noEmit": true
   },
   "include": ["src"]

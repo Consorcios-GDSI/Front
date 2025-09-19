@@ -174,3 +174,22 @@ tr:hover {
 .save-btn:hover {
     background-color: #0056b3;
 }
+/* Menú horizontal en header */
+.header-menu {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.header-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+}
+
+.header-menu .menu-item:hover {
+  color: #007bff;
+}
