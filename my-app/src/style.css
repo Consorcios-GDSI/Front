@@ -220,3 +220,14 @@ tr:hover {
 .delete-btn:hover {
     background-color: #c82333;
 }
+
+.error-input {
+  border: 2px solid red;
+}
+
+.error-text {
+  color: red;
+  font-size: 12px;
+  margin-bottom: 8px;
+  display: block;
+}

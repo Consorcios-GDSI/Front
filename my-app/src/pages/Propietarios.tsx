@@ -11,6 +11,16 @@ interface Propietario {
   saldo: number;
 }
 
+// Para el modal: saldo opcional porque al crear es cero
+interface PropietarioForm {
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  mail: string;
+  depto: string;
+  saldo?: number;
+}
+
 function Propietarios() {
   const [propietarios, setPropietarios] = useState<Propietario[]>([
     { id: 1, nombre: "Juan", apellido: "Pérez", telefono: "123456789", mail: "juan@mail.com", depto: "101", saldo: 5000 },
@@ -20,23 +30,20 @@ function Propietarios() {
   const [showModal, setShowModal] = useState(false);
   const [editingPropietario, setEditingPropietario] = useState<Propietario | null>(null);
 
-  const handleSave = (nuevo: Omit<Propietario, "id">) => {
+  const handleSave = (nuevo: PropietarioForm) => {
     if (editingPropietario) {
       // Editar existente
-      // Se debería validar el nuevo input llamando a la api
-      setPropietarios(propietarios.map(p => p.id === editingPropietario.id ? { ...p, ...nuevo } : p));
+      setPropietarios(propietarios.map(p => p.id === editingPropietario.id ? { ...p, ...nuevo, saldo: nuevo.saldo ?? p.saldo } : p));
       setEditingPropietario(null);
     } else {
       // Agregar nuevo
-      // Se debería validar el input llamando a la api
-      setPropietarios([...propietarios, { id: Date.now(), ...nuevo }]);
+      setPropietarios([...propietarios, { id: Date.now(), ...nuevo, saldo: 0 }]); // saldo inicia en 0
     }
     setShowModal(false);
   };
-  
+
   const handleDelete = (id: number) => {
     if (window.confirm('¿Está seguro que desea eliminar este propietario?')) {
-      // Aquí deberías hacer la llamada a la API para eliminar
       setPropietarios(propietarios.filter(p => p.id !== id));
     }
   };
@@ -63,7 +70,6 @@ function Propietarios() {
           </thead>
           <tbody>
             {propietarios.map((p) => (
-              // Deberíamos pedirselo a la api
               <tr key={p.id}>
                 <td>{p.nombre}</td>
                 <td>{p.apellido}</td>
@@ -72,7 +78,7 @@ function Propietarios() {
                 <td>{p.depto}</td>
                 <td>${p.saldo}</td>
                 <td>
-                  <div style={{ display: 'flex', gap: '10px' }}> {/* Added container div with spacing */}
+                  <div style={{ display: 'flex', gap: '10px' }}>
                     <button className="edit-btn" onClick={() => handleEdit(p)}>Editar</button>
                     <button className="delete-btn" onClick={() => handleDelete(p.id)}>Eliminar</button>
                   </div>
@@ -82,14 +88,15 @@ function Propietarios() {
           </tbody>
         </table>
 
-        <button className="add-btn" onClick={() => setShowModal(true)}>Añadir propietario</button>
+        <button className="add-btn" onClick={() => { setShowModal(true); setEditingPropietario(null); }}>Añadir propietario</button>
       </div>
 
       {showModal && (
         <Modal
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingPropietario(null); }}
-          initialData={editingPropietario}
+          initialData={editingPropietario ?? undefined}
+          isNew={!editingPropietario} // importante para que el modal sepa si es creación o edición
         />
       )}
     </main>
