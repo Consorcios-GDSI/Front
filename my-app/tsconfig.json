@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    /* Objetivo y módulo */
+    "target": "ES2022",
+    "module": "ESNext",
+
+    /* Librerías disponibles en el proyecto */
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    /* Usar define para campos de clase (opcional, pero lo conservamos) */
+    "useDefineForClassFields": true,
+
+    /* Comprobaciones estrictas */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    /* Ignorar chequear tipos de librerías externas */
+    "skipLibCheck": true,
+
+    /* React JSX */
+    "jsx": "react-jsx",
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    
+    /* Estas dos opciones pueden generar errores con JSX en React 18, mejor comentarlas */
+    // "verbatimModuleSyntax": true,
+    // "moduleDetection": "force",
+
+    /* No generar archivos JS */
+    "noEmit": true
+  },
+  "include": ["src"]
+}
