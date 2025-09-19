@@ -231,3 +231,41 @@ tr:hover {
   margin-bottom: 8px;
   display: block;
 }
+
+/* Buscador de departamento */
+.search-container {
+    display: flex;
+    justify-content: center; /* Centrado horizontal */
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-container input {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    width: 200px;
+    font-size: 14px;
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 4px rgba(0,123,255,0.5);
+}
+
+.search-container button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.search-container button:hover {
+    background-color: #0056b3;
+}
