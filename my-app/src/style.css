@@ -53,15 +53,18 @@ body {
     justify-content: center;
     align-items: center;
     min-height: calc(100vh - 80px);
-    padding: 20px; /* para que no se pegue al borde */
+    padding: 20px;
     box-sizing: border-box;
 }
 
 /* Opciones */
+/* Opciones */
 .options-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 20px 20px;
+    grid-template-columns: repeat(3, 150px); /* 3 columnas fijas, cambia el número según quieras */
+    gap: 20px;
+    justify-content: center; /* centra la tabla horizontalmente */
+    align-items: center;
 }
 
 .option-card {
@@ -76,12 +79,15 @@ body {
     text-align: center;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
+    width: 150px;
+    height: 150px; /* fijo para mantener cuadrado */
 }
 
 .option-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 12px rgba(0,0,0,0.2);
 }
+
 
 /* Tabla y botones */
 .table-container {
@@ -92,7 +98,7 @@ body {
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    overflow-x: auto; /* scroll horizontal si la tabla es muy ancha */
+    overflow-x: auto;
 }
 
 table {
@@ -235,7 +241,7 @@ tr:hover {
 /* Buscador de departamento */
 .search-container {
     display: flex;
-    justify-content: center; /* Centrado horizontal */
+    justify-content: center;
     align-items: center;
     gap: 10px;
     margin-bottom: 20px;
