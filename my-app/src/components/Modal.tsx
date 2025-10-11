@@ -19,15 +19,20 @@ interface Department {
   number: string;
 }
 
+interface LocalDepartments {
+    [key: number]: Department[];
+}
+
 interface ModalProps {
   onSave: (nuevo: PropietarioForm) => void;
   onClose: () => void;
   initialData?: PropietarioForm;
   isNew?: boolean;
   buildings: Building[];
+  localDepartments: LocalDepartments;
 }
 
-function Modal({ onSave, onClose, initialData, isNew = true, buildings }: ModalProps) {
+function Modal({ onSave, onClose, initialData, isNew = true, buildings, localDepartments }: ModalProps) {
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -38,23 +43,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings }: ModalP
   const [departments, setDepartments] = useState<Department[]>([]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  // Traer departamentos según el edificio
-  const fetchDepartments = async (id: number) => {
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/apartments/${id}`);
-      const data: Department[] = await res.json();
-      setDepartments(data);
-      if (!data.some((d) => d.number === depto)) {
-        setDepto(data[0]?.number || "");
-      }
-    } catch (err) {
-      console.error("Error al traer departamentos:", err);
-      setDepartments([]);
-      setDepto("");
-    }
-  };
-
+  
   useEffect(() => {
     if (initialData) {
       setNombre(initialData.nombre);
@@ -76,10 +65,17 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings }: ModalP
     setErrors({});
   }, [initialData, buildings]);
 
-  // Cada vez que cambie el edificio, traemos departamentos
+  // Carga de departamentos según el edificio seleccionado (data fija local)
   useEffect(() => {
-    if (buildingId) fetchDepartments(buildingId);
-  }, [buildingId]);
+    const newDepartments = localDepartments[buildingId] || [];
+    setDepartments(newDepartments);
+    
+    // Si el departamento actual no existe en la nueva lista, seleccionamos el primero (o lo dejamos vacío si no hay)
+    if (!newDepartments.some((d) => d.number === depto) || !depto) {
+        setDepto(newDepartments[0]?.number || "");
+    }
+    
+  }, [buildingId, localDepartments, depto]); 
 
   const validate = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -89,7 +85,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings }: ModalP
     if (!mail.trim()) newErrors.mail = "Mail es obligatorio";
     if (!depto.trim()) newErrors.depto = "Departamento es obligatorio";
     if (!buildingId) newErrors.building_id = "Edificio es obligatorio";
-    if (!isNew && (saldo === null || saldo === undefined)) newErrors.saldo = "Saldo es obligatorio";
+    if (!isNew && (saldo === null || saldo === undefined)) newErrors.saldo = "Saldo es obligatorio"; 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -124,6 +120,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings }: ModalP
         {errors.mail && <small className="error-text">{errors.mail}</small>}
 
         <select className={inputClass("building_id")} value={buildingId} onChange={(e) => setBuildingId(Number(e.target.value))}>
+          <option value={0} disabled>Seleccione Edificio</option>
           {buildings.map((b: Building) => (
             <option key={b.id} value={b.id}>
               {b.nombre}
@@ -131,14 +128,18 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings }: ModalP
           ))}
         </select>
         {errors.building_id && <small className="error-text">{errors.building_id}</small>}
-
-        <select className={inputClass("depto")} value={depto} onChange={(e) => setDepto(e.target.value)}>
-          {departments.map((d: Department) => (
-            <option key={d.number} value={d.number}>
-              {d.number}
-            </option>
-          ))}
-        </select>
+        
+        {departments.length > 0 && (
+            <select className={inputClass("depto")} value={depto} onChange={(e) => setDepto(e.target.value)}>
+              <option value="" disabled>Seleccione Departamento</option>
+              {departments.map((d: Department) => (
+                <option key={d.number} value={d.number}>
+                  {d.number}
+                </option>
+              ))}
+            </select>
+        )}
+        {departments.length === 0 && <input placeholder="No hay departamentos para este edificio" disabled />}
         {errors.depto && <small className="error-text">{errors.depto}</small>}
 
         {!isNew && (

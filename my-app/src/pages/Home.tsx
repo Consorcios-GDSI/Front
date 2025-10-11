@@ -9,10 +9,18 @@ function Home() {
         <div className="option-card" onClick={() => navigate("/propietarios")}>
           Gestión Propietarios
         </div>
-        <div className="option-card">Expensas</div>
-        <div className="option-card">Gastos</div>
-        <div className="option-card">Reportes</div>
-        <div className="option-card">Pagos</div>
+        <div className="option-card" onClick={() => navigate("/expensas")}>
+          Expensas
+        </div>
+        <div className="option-card" onClick={() => navigate("/gastos")}>
+          Gastos
+        </div>
+        <div className="option-card" onClick={() => navigate("/reportes")}>
+          Reportes
+        </div>
+        <div className="option-card" onClick={() => navigate("/pagos")}>
+          Pagos
+        </div>
       </div>
     </main>
   );

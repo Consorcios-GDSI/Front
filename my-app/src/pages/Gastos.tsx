@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ModalGasto from "../components/ModalGasto";
+import useLocalStorage from "../hooks/useLocalStorage"; 
 
 interface Gasto {
   id: number;
@@ -10,11 +11,22 @@ interface Gasto {
   descripcion: string;
 }
 
-function Gastos() {
-  const [gastos, setGastos] = useState<Gasto[]>([
+interface Propietario { // Re-declaramos la interfaz para uso interno
+  depto: string;
+}
+
+const initialGastos: Gasto[] = [
     { id: 1, depto: "101", tipo: "Luz", monto: 1500, fecha: "2025-09-19", descripcion: "Pago mensual luz" },
     { id: 2, depto: "102", tipo: "Agua", monto: 800, fecha: "2025-09-18", descripcion: "Pago agua" },
-  ]);
+];
+
+function Gastos() {
+  const [gastos, setGastos] = useLocalStorage<Gasto[]>(
+    "gastosData", 
+    initialGastos
+  );
+  // Cargar la lista de propietarios para obtener los departamentos válidos
+  const [propietarios] = useLocalStorage<Propietario[]>("propietariosData", []); 
 
   const [showModal, setShowModal] = useState(false);
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
@@ -25,7 +37,7 @@ function Gastos() {
       setGastos(gastos.map(g => g.id === editingGasto.id ? { ...g, ...nuevo } : g));
       setEditingGasto(null);
     } else {
-      setGastos([...gastos, { id: Date.now(), ...nuevo }]);
+      setGastos([...gastos, { id: Date.now(), ...nuevo, monto: Number(nuevo.monto) }]);
     }
     setShowModal(false);
   };
@@ -42,6 +54,9 @@ function Gastos() {
   };
 
   const filteredGastos = gastos.filter(g => g.depto.includes(searchDepto));
+  
+  // Extraer la lista única de departamentos de los propietarios para el modal
+  const availableDeptos = Array.from(new Set(propietarios.map(p => p.depto)));
 
   return (
     <main className="main-container">
@@ -88,7 +103,7 @@ function Gastos() {
         </table>
 
         {/* Botón de añadir gasto debajo de la tabla */}
-        <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => setShowModal(true)}>
+        <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => { setShowModal(true); setEditingGasto(null); }}>
           Añadir gasto
         </button>
       </div>
@@ -98,6 +113,7 @@ function Gastos() {
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingGasto(null); }}
           initialData={editingGasto || undefined}
+          availableDeptos={availableDeptos} // <-- Pasamos la lista de departamentos disponibles
         />
       )}
     </main>

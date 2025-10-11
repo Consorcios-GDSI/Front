@@ -11,11 +11,15 @@ interface GastoForm {
 interface ModalProps {
   onSave: (nuevo: GastoForm) => void;
   onClose: () => void;
-  initialData?: GastoForm | null; // <--- aceptar null
+  initialData?: GastoForm | null; 
+  availableDeptos: string[]; // <-- Nuevo: Departamentos válidos
 }
 
-function ModalGasto({ onSave, onClose, initialData }: ModalProps) {
-  const [depto, setDepto] = useState("");
+function ModalGasto({ onSave, onClose, initialData, availableDeptos }: ModalProps) {
+  const isNew = !initialData;
+  const initialDepto = initialData?.depto || availableDeptos[0] || ""; // Selecciona el primero si no hay data inicial
+    
+  const [depto, setDepto] = useState(initialDepto);
   const [tipo, setTipo] = useState("");
   const [monto, setMonto] = useState<number>(0);
   const [fecha, setFecha] = useState("");
@@ -31,20 +35,20 @@ function ModalGasto({ onSave, onClose, initialData }: ModalProps) {
       setFecha(initialData.fecha);
       setDescripcion(initialData.descripcion);
     } else {
-      setDepto("");
+      setDepto(availableDeptos[0] || ""); // Asegura que el depto inicial sea el primero disponible si se añade uno nuevo
       setTipo("");
       setMonto(0);
       setFecha("");
       setDescripcion("");
     }
     setErrors({});
-  }, [initialData]);
+  }, [initialData, availableDeptos]); // Dependencia added: availableDeptos
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
     if (!depto.trim()) newErrors.depto = "Departamento es obligatorio";
     if (!tipo.trim()) newErrors.tipo = "Tipo es obligatorio";
-    if (!monto) newErrors.monto = "Monto es obligatorio";
+    if (monto === null || monto === undefined || Number(monto) <= 0) newErrors.monto = "Monto debe ser un valor positivo";
     if (!fecha.trim()) newErrors.fecha = "Fecha es obligatoria";
     if (!descripcion.trim()) newErrors.descripcion = "Descripción es obligatoria";
     setErrors(newErrors);
@@ -53,10 +57,12 @@ function ModalGasto({ onSave, onClose, initialData }: ModalProps) {
 
   const handleSubmit = () => {
     if (!validate()) return;
-    onSave({ depto, tipo, monto, fecha, descripcion });
+    onSave({ depto, tipo, monto: Number(monto), fecha, descripcion }); 
   };
 
   const inputClass = (field: string) => (errors[field] ? "error-input" : "");
+  
+  const tiposGasto = ["Luz", "Agua", "Gas", "Sueldos", "Reparación", "Común", "Otros"];
 
   return (
     <div className="modal">
@@ -64,22 +70,23 @@ function ModalGasto({ onSave, onClose, initialData }: ModalProps) {
         <span className="close-btn" onClick={onClose}>
           &times;
         </span>
-        <h2>{initialData ? "Editar gasto" : "Añadir gasto"}</h2>
+        <h2>{isNew ? "Añadir Gasto" : "Editar Gasto"}</h2>
 
-        <input
-          className={inputClass("depto")}
-          value={depto}
-          onChange={(e) => setDepto(e.target.value)}
-          placeholder="Departamento"
-        />
+        {/* Campo de Departamento ahora es un SELECT */}
+        <select className={inputClass("depto")} value={depto} onChange={(e) => setDepto(e.target.value)}>
+            <option value="" disabled>Seleccione Departamento</option>
+            {availableDeptos.map((d: string) => (
+                <option key={d} value={d}>{d}</option>
+            ))}
+        </select>
         {errors.depto && <small className="error-text">{errors.depto}</small>}
-
-        <input
-          className={inputClass("tipo")}
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value)}
-          placeholder="Tipo"
-        />
+        
+        <select className={inputClass("tipo")} value={tipo} onChange={(e) => setTipo(e.target.value)}>
+          <option value="" disabled>Seleccionar Tipo</option>
+          {tiposGasto.map(t => (
+              <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
         {errors.tipo && <small className="error-text">{errors.tipo}</small>}
 
         <input

@@ -1,5 +1,13 @@
-import { useState, useEffect } from "react";
-import Modal from "../components/Modal";
+import { useState } from "react";
+// 💡 SOLUCIÓN: Usar un alias para el componente Modal importado
+import PropietarioModal from "../components/Modal"; 
+import useLocalStorage from "../hooks/useLocalStorage"; 
+
+// Tipos, interfaces y datos simulados
+interface Building {
+  id: number;
+  nombre: string;
+}
 
 interface Propietario {
   id: number;
@@ -22,81 +30,60 @@ interface PropietarioForm {
   building_id: number;
 }
 
-interface Building {
-  id: number;
-  nombre: string;
-}
+// Data fija de edificios y departamentos (CANTIDAD DE NÚMEROS SETEADA)
+const initialBuildings: Building[] = [
+    { id: 1, nombre: "Edificio A" },
+    { id: 2, nombre: "Edificio B" },
+];
+
+const initialDepartments = {
+    1: [{ number: "101" }, { number: "102" }, { number: "201" }],
+    2: [{ number: "1A" }, { number: "2B" }],
+};
+
 
 function Propietarios() {
-  const [propietarios, setPropietarios] = useState<Propietario[]>([]);
-  const [buildings, setBuildings] = useState<Building[]>([]);
+  // Persistencia de Propietarios
+  const [propietarios, setPropietarios] = useLocalStorage<Propietario[]>(
+    "propietariosData", 
+    []
+  ); 
+  
+  const [buildings] = useState<Building[]>(initialBuildings); 
   const [showModal, setShowModal] = useState(false);
   const [editingPropietario, setEditingPropietario] = useState<Propietario | null>(null);
 
-  const fetchBuildings = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/buildings");
-      setBuildings(await res.json());
-    } catch (err) {
-      console.error("Error al traer edificios:", err);
+  const handleSave = (nuevo: PropietarioForm) => {
+    if (editingPropietario) {
+      // Editar
+      setPropietarios(
+        propietarios.map((p) => (p.id === editingPropietario.id ? { ...p, ...nuevo as Propietario } : p))
+      );
+    } else {
+      // Añadir
+      const newPropietario: Propietario = {
+        id: Date.now(), 
+        ...nuevo,
+        saldo: 0, 
+      };
+      setPropietarios([...propietarios, newPropietario]);
     }
+    
+    setShowModal(false);
+    setEditingPropietario(null);
   };
 
-  const fetchPropietarios = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/residents");
-      setPropietarios(await res.json());
-    } catch (err) {
-      console.error("Error al traer propietarios:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchBuildings();
-    fetchPropietarios();
-  }, []);
-
-  const handleSave = async (nuevo: PropietarioForm) => {
-    try {
-      if (editingPropietario) {
-        // actualizar local o PUT/PATCH a API
-        setPropietarios(
-          propietarios.map((p) => (p.id === editingPropietario.id ? { ...p, ...nuevo } : p))
-        );
-      } else {
-        const res = await fetch(
-          `http://127.0.0.1:8000/residents/${nuevo.building_id}/${nuevo.depto}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(nuevo),
-          }
-        );
-        const data: Propietario = await res.json();
-        setPropietarios([...propietarios, data]);
-      }
-    } catch (err) {
-      console.error("Error al guardar propietario:", err);
-    } finally {
-      setShowModal(false);
-      setEditingPropietario(null);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!window.confirm("¿Está seguro que desea eliminar este propietario?")) return;
-    try {
-      await fetch(`http://127.0.0.1:8000/residents/${id}`, { method: "DELETE" });
-      setPropietarios(propietarios.filter((p) => p.id !== id));
-    } catch (err) {
-      console.error("Error al eliminar propietario:", err);
-    }
+    setPropietarios(propietarios.filter((p) => p.id !== id));
   };
 
   const handleEdit = (p: Propietario) => {
     setEditingPropietario(p);
     setShowModal(true);
   };
+
+  const buildingFinder = (id: number) => buildings.find((b) => b.id === id)?.nombre || "Desconocido";
 
   return (
     <main className="main-container">
@@ -115,30 +102,27 @@ function Propietarios() {
             </tr>
           </thead>
           <tbody>
-            {propietarios.map((p) => {
-              const buildingName = buildings.find((b) => b.id === p.building_id)?.nombre || "Desconocido";
-              return (
-                <tr key={p.id}>
-                  <td>{p.nombre}</td>
-                  <td>{p.apellido}</td>
-                  <td>{p.telefono}</td>
-                  <td>{p.mail}</td>
-                  <td>{p.depto}</td>
-                  <td>{buildingName}</td>
-                  <td>${p.saldo}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button className="edit-btn" onClick={() => handleEdit(p)}>
-                        Editar
-                      </button>
-                      <button className="delete-btn" onClick={() => handleDelete(p.id)}>
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {propietarios.map((p) => (
+              <tr key={p.id}>
+                <td>{p.nombre}</td>
+                <td>{p.apellido}</td>
+                <td>{p.telefono}</td>
+                <td>{p.mail}</td>
+                <td>{p.depto}</td>
+                <td>{buildingFinder(p.building_id)}</td>
+                <td>${p.saldo}</td>
+                <td>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button className="edit-btn" onClick={() => handleEdit(p)}>
+                      Editar
+                    </button>
+                    <button className="delete-btn" onClick={() => handleDelete(p.id)}>
+                      Eliminar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
         <button
@@ -153,12 +137,13 @@ function Propietarios() {
       </div>
 
       {showModal && (
-        <Modal
+        <PropietarioModal // 💡 USAR EL ALIAS DE IMPORTACIÓN
           onSave={handleSave}
-          onClose={() => setShowModal(false)}
+          onClose={() => { setShowModal(false); setEditingPropietario(null); }}
           initialData={editingPropietario ?? undefined}
           isNew={!editingPropietario}
           buildings={buildings}
+          localDepartments={initialDepartments} 
         />
       )}
     </main>
