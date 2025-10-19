@@ -6,6 +6,9 @@ function Home() {
   return (
     <main className="main-container">
       <div className="options-container">
+        <div className="option-card" onClick={() => navigate("/edificios")}> {/* <-- Nueva tarjeta */}
+          Gestión Edificios
+        </div>
         <div className="option-card" onClick={() => navigate("/propietarios")}>
           Gestión Propietarios
         </div>
@@ -15,11 +18,11 @@ function Home() {
         <div className="option-card" onClick={() => navigate("/gastos")}>
           Gastos
         </div>
-        <div className="option-card" onClick={() => navigate("/reportes")}>
-          Reportes
-        </div>
         <div className="option-card" onClick={() => navigate("/pagos")}>
           Pagos
+        </div>
+        <div className="option-card" onClick={() => navigate("/reportes")}>
+          Reportes
         </div>
       </div>
     </main>

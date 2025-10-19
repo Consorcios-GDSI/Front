@@ -10,11 +10,12 @@ function Header() {
         <a href="/" className="menu-item">
           <FaHome size={18} /> Home
         </a>
-        <a href="/reportes" className="menu-item">Reportes</a>
+        <a href="/edificios" className="menu-item">Gestión de Edificios</a> {/* <-- Nuevo Enlace */}
+        <a href="/propietarios" className="menu-item">Gestión de Propietarios</a>
         <a href="/gastos" className="menu-item">Gastos</a>
         <a href="/expensas" className="menu-item">Expensas</a>
-        <a href="/propietarios" className="menu-item">Gestión de Propietarios</a>
         <a href="/pagos" className="menu-item">Pagos</a>
+        <a href="/reportes" className="menu-item">Reportes</a>
       </nav>
 
       <div className="user-info">
