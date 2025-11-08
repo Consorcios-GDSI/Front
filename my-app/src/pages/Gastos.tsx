@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ModalGasto from "../components/ModalGasto";
-import useLocalStorage from "../hooks/useLocalStorage"; 
 
 interface Gasto {
   id: number;
@@ -9,42 +8,175 @@ interface Gasto {
   monto: number;
   fecha: string;
   descripcion: string;
+  building_id: number;
 }
 
-interface Propietario { // Re-declaramos la interfaz para uso interno
-  depto: string;
+interface Apartment {
+  apartment_name: string;
+  unit_number: number;
+  building_id: number;
+  resident_dni: number | null;
 }
 
-const initialGastos: Gasto[] = [
-    { id: 1, depto: "101", tipo: "Luz", monto: 1500, fecha: "2025-09-19", descripcion: "Pago mensual luz" },
-    { id: 2, depto: "102", tipo: "Agua", monto: 800, fecha: "2025-09-18", descripcion: "Pago agua" },
-];
+interface Building {
+  id: number;
+  address: string;
+}
+
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 function Gastos() {
-  const [gastos, setGastos] = useLocalStorage<Gasto[]>(
-    "gastosData", 
-    initialGastos
-  );
-  // Cargar la lista de propietarios para obtener los departamentos válidos
-  const [propietarios] = useLocalStorage<Propietario[]>("propietariosData", []); 
-
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(1);
   const [showModal, setShowModal] = useState(false);
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
-  const [searchDepto, setSearchDepto] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = (nuevo: Omit<Gasto, "id">) => {
-    if (editingGasto) {
-      setGastos(gastos.map(g => g.id === editingGasto.id ? { ...g, ...nuevo } : g));
-      setEditingGasto(null);
-    } else {
-      setGastos([...gastos, { id: Date.now(), ...nuevo, monto: Number(nuevo.monto) }]);
+  // Cargar datos iniciales desde el backend
+  useEffect(() => {
+    loadBuildings();
+    loadApartments();
+  }, []);
+
+  // Cargar gastos cuando cambia el edificio seleccionado
+  useEffect(() => {
+    if (selectedBuildingId) {
+      loadApartments();
+      loadGastos();
     }
-    setShowModal(false);
+  }, [selectedBuildingId]);
+
+  const loadBuildings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/buildings`);
+      if (!response.ok) throw new Error("Error al cargar edificios");
+      const data = await response.json();
+      setBuildings(data);
+      
+      // Seleccionar el primer edificio por defecto
+      if (data.length > 0 && !selectedBuildingId) {
+        setSelectedBuildingId(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error cargando edificios:", error);
+      alert("Error al cargar los edificios");
+    }
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("¿Está seguro que desea eliminar este gasto?")) {
-      setGastos(gastos.filter(g => g.id !== id));
+  const loadGastos = async () => {
+    if (!selectedBuildingId) return;
+    
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/expenses?building_id=${selectedBuildingId}`);
+      if (!response.ok) throw new Error("Error al cargar gastos");
+      const data = await response.json();
+      
+      // Transformar datos del backend al formato del frontend
+      const gastosTransformados = data.map((expense: any) => ({
+        id: expense.id,
+        depto: expense.apartment_unit_number?.toString() || "-",
+        tipo: expense.category,
+        monto: expense.amount,
+        fecha: expense.expense_date,
+        descripcion: expense.description,
+        building_id: expense.building_id
+      }));
+      
+      setGastos(gastosTransformados);
+    } catch (error) {
+      console.error("Error cargando gastos:", error);
+      alert("Error al cargar los gastos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadApartments = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
+      if (!response.ok) throw new Error("Error al cargar departamentos");
+      const data = await response.json();
+      setApartments(data);
+      
+      // Seleccionar el primer building_id disponible
+      if (data.length > 0 && !selectedBuildingId) {
+        setSelectedBuildingId(data[0].building_id);
+      }
+    } catch (error) {
+      console.error("Error cargando departamentos:", error);
+    }
+  };
+
+  const handleSave = async (nuevo: Omit<Gasto, "id" | "building_id">) => {
+    try {
+      if (!selectedBuildingId) {
+        alert("No hay un edificio seleccionado");
+        return;
+      }
+
+      // Transformar datos del frontend al formato del backend
+      const expenseData = {
+        description: nuevo.descripcion,
+        amount: Number(nuevo.monto),
+        category: nuevo.depto === "-" ? "GENERAL" : "INDIVIDUAL",
+        building_id: selectedBuildingId,
+        apartment_unit_number: nuevo.depto === "-" ? null : parseInt(nuevo.depto),
+        expense_date: nuevo.fecha
+      };
+
+      console.log("Guardando gasto con datos:", expenseData);
+
+      if (editingGasto) {
+        // Actualizar gasto existente
+        const response = await fetch(`${API_BASE_URL}/expenses/${editingGasto.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(expenseData)
+        });
+
+        if (!response.ok) throw new Error("Error al actualizar gasto");
+        
+        await loadGastos(); // Recargar la lista
+        setEditingGasto(null);
+      } else {
+        // Crear nuevo gasto
+        const response = await fetch(`${API_BASE_URL}/expenses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(expenseData)
+        });
+
+        if (!response.ok) throw new Error("Error al crear gasto");
+        
+        await loadGastos(); // Recargar la lista
+      }
+      
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error guardando gasto:", error);
+      alert("Error al guardar el gasto");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("¿Está seguro que desea eliminar este gasto?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar gasto");
+      
+      await loadGastos(); // Recargar la lista
+    } catch (error) {
+      console.error("Error eliminando gasto:", error);
+      alert("Error al eliminar el gasto");
     }
   };
 
@@ -53,54 +185,74 @@ function Gastos() {
     setShowModal(true);
   };
 
-  const filteredGastos = gastos.filter(g => g.depto.includes(searchDepto));
+  // Filtrar apartamentos del edificio seleccionado
+  const apartmentsInBuilding = apartments.filter(a => a.building_id === selectedBuildingId);
   
-  // Extraer la lista única de departamentos de los propietarios para el modal
-  const availableDeptos = Array.from(new Set(propietarios.map(p => p.depto)));
+  // Crear opciones que incluyan tanto el número como el nombre del departamento
+  const availableDeptos = [
+    { value: "-", label: "-" },
+    ...apartmentsInBuilding.map(a => ({
+      value: a.unit_number.toString(),
+      label: `${a.unit_number} - ${a.apartment_name}`
+    }))
+  ];
 
   return (
     <main className="main-container">
       <div className="table-container">
-        {/* Buscador centrado arriba de la tabla */}
+        {/* Dropdown de edificios */}
         <div className="search-container">
-          <input
-            type="text"
-            placeholder="Buscar por departamento"
-            value={searchDepto}
-            onChange={e => setSearchDepto(e.target.value)}
-          />
-          <button onClick={() => {}}>Buscar</button>
+          <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
+            Seleccionar Edificio:
+          </label>
+          <select
+            id="building-select"
+            value={selectedBuildingId || ""}
+            onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
+            style={{ padding: "8px", fontSize: "14px" }}
+          >
+            <option value="" disabled>Seleccione un edificio</option>
+            {buildings.map(building => (
+              <option key={building.id} value={building.id}>
+                {building.address}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Nro Departamento</th>
-              <th>Tipo</th>
-              <th>Monto ($)</th>
-              <th>Fecha de origen</th>
-              <th>Descripción</th>
-              <th>Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredGastos.map(g => (
-              <tr key={g.id}>
-                <td>{g.depto}</td>
-                <td>{g.tipo}</td>
-                <td>${g.monto}</td>
-                <td>{g.fecha}</td>
-                <td>{g.descripcion}</td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button className="edit-btn" onClick={() => handleEdit(g)}>Editar</button>
-                    <button className="delete-btn" onClick={() => handleDelete(g.id)}>Eliminar</button>
-                  </div>
-                </td>
+        {loading ? (
+          <p>Cargando gastos...</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Nro Departamento</th>
+                <th>Tipo</th>
+                <th>Monto ($)</th>
+                <th>Fecha de origen</th>
+                <th>Descripción</th>
+                <th>Edición</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {gastos.map(g => (
+                <tr key={g.id}>
+                  <td>{g.depto}</td>
+                  <td>{g.tipo}</td>
+                  <td>${g.monto}</td>
+                  <td>{g.fecha}</td>
+                  <td>{g.descripcion}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button className="edit-btn" onClick={() => handleEdit(g)}>Editar</button>
+                      <button className="delete-btn" onClick={() => handleDelete(g.id)}>Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
         {/* Botón de añadir gasto debajo de la tabla */}
         <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => { setShowModal(true); setEditingGasto(null); }}>
@@ -112,8 +264,14 @@ function Gastos() {
         <ModalGasto
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingGasto(null); }}
-          initialData={editingGasto || undefined}
-          availableDeptos={availableDeptos} // <-- Pasamos la lista de departamentos disponibles
+          initialData={editingGasto ? {
+            depto: editingGasto.depto,
+            tipo: editingGasto.tipo,
+            monto: editingGasto.monto,
+            fecha: editingGasto.fecha,
+            descripcion: editingGasto.descripcion
+          } : undefined}
+          availableDeptos={availableDeptos}
         />
       )}
     </main>
