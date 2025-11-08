@@ -6,6 +6,7 @@ import Expensas from "../pages/Expensas";
 import Pagos from "../pages/Pagos";     
 import Reportes from "../pages/Reportes"; 
 import Edificios from "../pages/Edificios"; // <-- Nuevo import
+import Departamentos from "../pages/Departamentos";
 
 function AppRoutes() {
   return (
@@ -17,6 +18,7 @@ function AppRoutes() {
       <Route path="/pagos" element={<Pagos />} />          
       <Route path="/reportes" element={<Reportes />} />    
       <Route path="/edificios" element={<Edificios />} /> {/* <-- Nueva ruta */}
+      <Route path="/departamentos/:id" element={<Departamentos />} />
     </Routes>
   );
 }

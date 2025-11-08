@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 // Usamos el alias para evitar colisión de nombres
 import PropietarioModal from "../components/Modal"; 
 import useLocalStorage from "../hooks/useLocalStorage"; 
@@ -16,23 +16,23 @@ interface Building {
 
 interface Propietario {
   id: number;
-  nombre: string;
-  apellido: string;
-  telefono: string;
+  name: string;
+  dni: number;
+  telephone: string;
   mail: string;
-  depto: string;
-  saldo: number;
-  building_id: number;
+  depto?: string;
+  saldo?: number;
+  building_id?: number;
 }
 
 interface PropietarioForm {
-  nombre: string;
-  apellido: string;
-  telefono: string;
+  name: string;
+  dni: number;
+  telephone: string;
   mail: string;
-  depto: string;
+  depto?: string;
   saldo?: number;
-  building_id: number;
+  building_id?: number;
 }
 
 // Interfaz para la data de departamentos que necesita el Modal (formato de mapeo)
@@ -65,17 +65,37 @@ function Propietarios() {
     return acc;
   }, {} as LocalDepartments);
 
+  // Utilidad para convertir Propietario a PropietarioForm
+  const propietarioToForm = (p: Propietario): PropietarioForm => ({
+    name: p.name,
+    dni: p.dni,
+    telephone: p.telephone,
+    mail: p.mail,
+    depto: p.depto,
+    saldo: p.saldo,
+    building_id: p.building_id,
+  });
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/residents")
+      .then((res) => res.json())
+      .then((data) => {
+        setPropietarios(data); // Asume que el endpoint devuelve un array compatible
+      })
+      .catch((err) => {
+        console.error("Error al cargar propietarios:", err);
+      });
+  }, []);
 
   const handleSave = (nuevo: PropietarioForm) => {
     if (editingPropietario) {
       setPropietarios(
-        propietarios.map((p) => (p.id === editingPropietario.id ? { ...p, ...nuevo as Propietario } : p))
+        propietarios.map((p) => (p.dni === editingPropietario.dni ? { ...p, ...nuevo } : p))
       );
     } else {
       const newPropietario: Propietario = {
         id: Date.now(), 
         ...nuevo,
-        saldo: 0, 
       };
       setPropietarios([...propietarios, newPropietario]);
     }
@@ -102,8 +122,8 @@ function Propietarios() {
         <table>
           <thead>
             <tr>
+              <th>DNI</th>
               <th>Nombre</th>
-              <th>Apellido</th>
               <th>Teléfono</th>
               <th>Mail</th>
               <th>Nro Departamento</th>
@@ -115,13 +135,13 @@ function Propietarios() {
           <tbody>
             {propietarios.map((p) => (
               <tr key={p.id}>
-                <td>{p.nombre}</td>
-                <td>{p.apellido}</td>
-                <td>{p.telefono}</td>
+                <td>{p.dni}</td>
+                <td>{p.name}</td>
+                <td>{p.telephone}</td>
                 <td>{p.mail}</td>
-                <td>{p.depto}</td>
-                <td>{buildingFinder(p.building_id)}</td>
-                <td>${p.saldo}</td>
+                <td>{p.depto ?? "-"}</td>
+                <td>{p.building_id ? buildingFinder(p.building_id) : "-"}</td>
+                <td>{p.saldo !== undefined ? `$${p.saldo}` : "-"}</td>
                 <td>
                   <div style={{ display: "flex", gap: "10px" }}>
                     <button className="edit-btn" onClick={() => handleEdit(p)}>
@@ -151,7 +171,7 @@ function Propietarios() {
         <PropietarioModal 
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingPropietario(null); }}
-          initialData={editingPropietario ?? undefined}
+          initialData={editingPropietario ? propietarioToForm(editingPropietario) : undefined}
           isNew={!editingPropietario}
           buildings={buildingsList} // Usa la lista simple de edificios para el select
           localDepartments={localDepartments} 
