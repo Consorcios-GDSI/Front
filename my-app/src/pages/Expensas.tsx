@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface BillingStatement {
   id: number;
@@ -241,6 +243,106 @@ function Expensas() {
     return apt ? apt.apartment_name : "";
   };
 
+  const columns = useMemo<ColumnDef<BillingStatement>[]>(
+    () => [
+      {
+        accessorKey: "apartment_unit_number",
+        header: "Depto",
+        size: 80,
+      },
+      {
+        id: "nombre",
+        header: "Nombre",
+        cell: ({ row }) => getApartmentName(row.original.apartment_unit_number),
+        enableSorting: false,
+      },
+      {
+        accessorKey: "particular_expenses",
+        header: "Gastos Particulares",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "shared_expenses",
+        header: "Gastos Comunes",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "previous_balance",
+        header: "Saldo Anterior",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "interest_charges",
+        header: "Intereses",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "previous_credit",
+        header: "Crédito",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "total_amount",
+        header: "Total",
+        cell: (info) => <strong>${Number(info.getValue()).toFixed(2)}</strong>,
+      },
+      {
+        accessorKey: "paid_amount",
+        header: "Pagado",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "balance",
+        header: "Saldo",
+        cell: (info) => {
+          const value = Number(info.getValue());
+          return (
+            <span style={{ color: value < 0 ? "green" : value > 0 ? "red" : "black" }}>
+              ${value.toFixed(2)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "payment_status",
+        header: "Estado",
+        cell: (info) => {
+          const status = String(info.getValue());
+          return (
+            <span
+              style={{
+                padding: "4px 8px",
+                borderRadius: "4px",
+                backgroundColor: PAYMENT_STATUS_COLORS[status] || "#999",
+                color: "white",
+                fontSize: "12px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {PAYMENT_STATUS_LABELS[status] || status}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "due_date",
+        header: "Vencimiento",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+            Eliminar
+          </button>
+        ),
+        enableSorting: false,
+      },
+    ],
+    [apartments]
+  );
+
   return (
     <main className="main-container">
       <div className="table-container">
@@ -297,10 +399,7 @@ function Expensas() {
           {/* Botones de acción */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
-              className="px-4 py-2 rounded-xl font-semibold shadow-md 
-bg-gradient-to-r from-blue-500 to-blue-700 text-white 
-hover:-translate-y-[1px] hover:shadow-lg active:translate-y-0 
-transition-all"
+              className="add-btn"
               onClick={() => handleCalculate(false)}
               disabled={calculating}
               style={{ opacity: calculating ? 0.6 : 1 }}
@@ -308,10 +407,7 @@ transition-all"
               {calculating ? "Calculando..." : "Calcular Expensas"}
             </button>
             <button
-              className="px-4 py-2 rounded-xl font-semibold shadow-md 
-bg-gradient-to-r from-blue-500 to-blue-700 text-white 
-hover:-translate-y-[1px] hover:shadow-lg active:translate-y-0 
-transition-all"
+              className="edit-btn"
               onClick={() => handleCalculate(true)}
               disabled={calculating}
               style={{ opacity: calculating ? 0.6 : 1 }}
@@ -319,10 +415,7 @@ transition-all"
               Recalcular
             </button>
             <button
-              className="px-4 py-2 rounded-xl font-semibold shadow-md 
-bg-gradient-to-r from-blue-500 to-blue-700 text-white 
-hover:-translate-y-[1px] hover:shadow-lg active:translate-y-0 
-transition-all"
+              className="save-btn"
               onClick={handleReconcile}
               disabled={reconciling}
               style={{ opacity: reconciling ? 0.6 : 1 }}
@@ -333,9 +426,7 @@ transition-all"
         </div>
 
         {/* Tabla de expensas */}
-        {loading ? (
-          <p>Cargando expensas...</p>
-        ) : billingStatements.length === 0 ? (
+        {billingStatements.length === 0 && !loading ? (
           <div style={{ textAlign: "center", padding: "40px" }}>
             <p style={{ fontSize: "18px", color: "#666" }}>
               No hay expensas calculadas para este período.
@@ -345,62 +436,12 @@ transition-all"
             </p>
           </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Depto</th>
-                <th>Nombre</th>
-                <th>Gastos Particulares</th>
-                <th>Gastos Comunes</th>
-                <th>Saldo Anterior</th>
-                <th>Intereses</th>
-                <th>Crédito</th>
-                <th>Total</th>
-                <th>Pagado</th>
-                <th>Saldo</th>
-                <th>Estado</th>
-                <th>Vencimiento</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {billingStatements.map((bs) => (
-                <tr key={bs.id}>
-                  <td>{bs.apartment_unit_number}</td>
-                  <td>{getApartmentName(bs.apartment_unit_number)}</td>
-                  <td>${bs.particular_expenses.toFixed(2)}</td>
-                  <td>${bs.shared_expenses.toFixed(2)}</td>
-                  <td>${bs.previous_balance.toFixed(2)}</td>
-                  <td>${bs.interest_charges.toFixed(2)}</td>
-                  <td>${bs.previous_credit.toFixed(2)}</td>
-                  <td style={{ fontWeight: "bold" }}>${bs.total_amount.toFixed(2)}</td>
-                  <td>${bs.paid_amount.toFixed(2)}</td>
-                  <td style={{ color: bs.balance < 0 ? "green" : bs.balance > 0 ? "red" : "black" }}>
-                    ${bs.balance.toFixed(2)}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        backgroundColor: PAYMENT_STATUS_COLORS[bs.payment_status] || "#999",
-                        color: "white",
-                        fontSize: "12px",
-                      }}
-                    >
-                      {PAYMENT_STATUS_LABELS[bs.payment_status] || bs.payment_status}
-                    </span>
-                  </td>
-                  <td>{new Date(bs.due_date).toLocaleDateString("es-ES")}</td>
-                  <td>
-                    <button className="delete-btn" onClick={() => handleDelete(bs.id)}>
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            data={billingStatements}
+            columns={columns}
+            loading={loading}
+            emptyMessage="No hay expensas calculadas para este período"
+          />
         )}
       </div>
     </main>

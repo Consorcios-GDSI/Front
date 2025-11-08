@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useLocalStorage from "../hooks/useLocalStorage";
 import ModalEdificio from "../components/ModalEdificio";
 import { useNavigate } from "react-router-dom";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface Edificio {
   id: number;
@@ -91,48 +93,67 @@ function Edificios() {
     setShowModal(true);
   };
 
+  const columns = useMemo<ColumnDef<Edificio>[]>(
+    () => [
+      {
+        accessorKey: "id",
+        header: "ID",
+        size: 80,
+      },
+      {
+        accessorKey: "address",
+        header: "Dirección",
+        cell: (info) => <strong>{String(info.getValue())}</strong>,
+      },
+      {
+        id: "departamentos",
+        header: "Departamentos",
+        cell: ({ row }) => (
+          <button
+            className="view-btn"
+            onClick={() => navigate(`/departamentos/${row.original.id}`)}
+          >
+            Ver Departamentos
+          </button>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="action-buttons">
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button
+              className="delete-btn"
+              onClick={() => handleDelete(row.original.id, row.original.address)}
+            >
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    [navigate]
+  );
+
   return (
     <main className="main-container">
       <div className="table-container">
         <h2>Gestión de Edificios</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Dirección</th>
-              <th>Departamentos</th>
-              <th>Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {edificios.map((e) => (
-              <tr key={e.id}>
-                <td>{e.id}</td>
-                <td>{e.address}</td>
-                <td>
-                  <button
-                    style={{ background: "#2ecc40", color: "white", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}
-                    onClick={() => navigate(`/departamentos/${e.id}`)}
-                  >
-                    Ver
-                  </button>
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button className="edit-btn" onClick={() => handleEdit(e)}>
-                      Editar
-                    </button>
-                    <button className="delete-btn" onClick={() => handleDelete(e.id, e.address)}>
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        
+        <DataTable
+          data={edificios}
+          columns={columns}
+          emptyMessage="No hay edificios registrados"
+        />
+        
         <button
           className="add-btn"
+          style={{ marginTop: "20px" }}
           onClick={() => {
             setEditingEdificio(null);
             setShowModal(true);

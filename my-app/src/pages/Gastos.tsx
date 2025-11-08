@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ModalGasto from "../components/ModalGasto";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface Gasto {
   id: number;
@@ -197,11 +199,55 @@ function Gastos() {
     }))
   ];
 
+  const columns = useMemo<ColumnDef<Gasto>[]>(
+    () => [
+      {
+        accessorKey: "depto",
+        header: "Nro Departamento",
+        size: 120,
+      },
+      {
+        accessorKey: "tipo",
+        header: "Tipo",
+      },
+      {
+        accessorKey: "monto",
+        header: "Monto ($)",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "fecha",
+        header: "Fecha",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
+        accessorKey: "descripcion",
+        header: "Descripción",
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="action-buttons">
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
       <div className="table-container">
         {/* Dropdown de edificios */}
-        <div className="search-container">
+        <div className="search-container" style={{ marginBottom: "20px" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
             Seleccionar Edificio:
           </label>
@@ -220,39 +266,12 @@ function Gastos() {
           </select>
         </div>
 
-        {loading ? (
-          <p>Cargando gastos...</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nro Departamento</th>
-                <th>Tipo</th>
-                <th>Monto ($)</th>
-                <th>Fecha de origen</th>
-                <th>Descripción</th>
-                <th>Edición</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gastos.map(g => (
-                <tr key={g.id}>
-                  <td>{g.depto}</td>
-                  <td>{g.tipo}</td>
-                  <td>${g.monto}</td>
-                  <td>{g.fecha}</td>
-                  <td>{g.descripcion}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button className="edit-btn" onClick={() => handleEdit(g)}>Editar</button>
-                      <button className="delete-btn" onClick={() => handleDelete(g.id)}>Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          data={gastos}
+          columns={columns}
+          loading={loading}
+          emptyMessage="No hay gastos registrados para este edificio"
+        />
 
         {/* Botón de añadir gasto debajo de la tabla */}
         <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => { setShowModal(true); setEditingGasto(null); }}>

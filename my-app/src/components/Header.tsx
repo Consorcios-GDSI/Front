@@ -15,7 +15,7 @@ function Header() {
         <a href="/gastos" className="menu-item">Gastos</a>
         <a href="/pagos" className="menu-item">Pagos</a>
         <a href="/expensas" className="menu-item">Expensas</a>
-        <a href="/reportes" className="menu-item">Reportes</a>
+        {/* <a href="/reportes" className="menu-item">Reportes</a> */}
       </nav>
 
       <div className="user-info">

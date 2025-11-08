@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { ColumnDef } from "@tanstack/react-table";
 // Modal existente para alta/edición
-import PropietarioModal from "../components/Modal"; 
+import PropietarioModal from "../components/Modal";
+import DataTable from "../components/DataTable"; 
 
 // Tipos, interfaces y datos simulados
 interface Department {
@@ -257,47 +259,58 @@ function Propietarios() {
     setShowModal(true);
   };
 
+  const columns = useMemo<ColumnDef<Propietario>[]>(
+    () => [
+      {
+        accessorKey: "dni",
+        header: "DNI",
+      },
+      {
+        accessorKey: "name",
+        header: "Nombre",
+      },
+      {
+        accessorKey: "telephone",
+        header: "Teléfono",
+      },
+      {
+        accessorKey: "mail",
+        header: "Mail",
+      },
+      {
+        id: "edicion",
+        header: "Edición",
+        cell: ({ row }) => (
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button 
+              className="add-apartment-btn" 
+              onClick={() => handleAddApartment(row.original)}
+              style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              + Depto
+            </button>
+            <button className="delete-btn" onClick={() => handleDelete(row.original.dni, row.original.name)}>
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
       <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>DNI</th>
-              <th>Nombre</th>
-              <th>Teléfono</th>
-              <th>Mail</th>
-              <th>Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {propietarios.map((p) => (
-              <tr key={p.id}>
-                <td>{p.dni}</td>
-                <td>{p.name}</td>
-                <td>{p.telephone}</td>
-                <td>{p.mail}</td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button className="edit-btn" onClick={() => handleEdit(p)}>
-                      Editar
-                    </button>
-                    <button 
-                      className="add-apartment-btn" 
-                      onClick={() => handleAddApartment(p)}
-                      style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      + Depto
-                    </button>
-                    <button className="delete-btn" onClick={() => handleDelete(p.dni, p.name)}>
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          data={propietarios}
+          columns={columns}
+          emptyMessage="No hay propietarios registrados"
+        />
         <button
           className="add-btn"
           onClick={() => {

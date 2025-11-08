@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { ColumnDef } from "@tanstack/react-table";
 import ModalDepartamento from "../components/ModalDepartamento";
+import DataTable from "../components/DataTable";
 
 interface Departamento {
   apartment_name: string;
@@ -92,6 +94,49 @@ function Departamentos() {
     }
   };
 
+  const columns = useMemo<ColumnDef<Departamento>[]>(
+    () => [
+      {
+        accessorKey: "apartment_name",
+        header: "Nombre Departamento",
+      },
+      {
+        accessorKey: "unit_number",
+        header: "Número de Unidad",
+      },
+      {
+        accessorKey: "resident_dni",
+        header: "DNI del Residente",
+        cell: (info) => info.getValue() ?? "-",
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div style={{ display: "flex", gap: "10px" }}>
+            {row.original.resident_dni && (
+              <button 
+                className="edit-btn" 
+                onClick={() => handleUnassignResident(row.original.unit_number, row.original.apartment_name)}
+                title="Desasignar residente"
+              >
+                Desasignar
+              </button>
+            )}
+            <button
+              className="delete-btn"
+              onClick={() => handleDelete(row.original.unit_number, row.original.apartment_name)}
+            >
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
       <div className="table-container">
@@ -101,44 +146,11 @@ function Departamentos() {
         ) : error ? (
           <p style={{ color: "red", textAlign: "center" }}>{error}</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre Departamento</th>
-                <th>Número de Unidad</th>
-                <th>DNI del Residente</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departamentos.map((d, idx) => (
-                <tr key={idx}>
-                  <td>{d.apartment_name}</td>
-                  <td>{d.unit_number}</td>
-                  <td>{d.resident_dni ?? "-"}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      {d.resident_dni && (
-                        <button 
-                          className="edit-btn" 
-                          onClick={() => handleUnassignResident(d.unit_number, d.apartment_name)}
-                          title="Desasignar residente"
-                        >
-                          Desasignar
-                        </button>
-                      )}
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(d.unit_number, d.apartment_name)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            data={departamentos}
+            columns={columns}
+            emptyMessage="No hay departamentos en este edificio"
+          />
         )}
         <button
           className="add-btn"

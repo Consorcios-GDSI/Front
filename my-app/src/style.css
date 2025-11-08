@@ -51,9 +51,9 @@ body {
 .main-container {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     min-height: calc(100vh - 80px);
-    padding: 20px;
+    padding: 40px 20px;
     box-sizing: border-box;
 }
 
@@ -92,13 +92,43 @@ body {
 /* Tabla y botones */
 .table-container {
     background-color: #fff;
-    padding: 20px;
+    padding: 30px;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     width: 100%;
-    max-width: 1000px;
+    max-width: 95%;
     margin: 0 auto;
     overflow-x: auto;
+}
+
+/* Responsividad para diferentes tamaños de pantalla */
+@media (min-width: 1400px) {
+    .table-container {
+        max-width: 1400px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .table-container {
+        max-width: 1600px;
+    }
+}
+
+@media (max-width: 768px) {
+    .table-container {
+        padding: 15px;
+        max-width: 100%;
+    }
+    
+    .main-container {
+        padding: 20px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .table-container {
+        padding: 10px;
+    }
 }
 
 table {

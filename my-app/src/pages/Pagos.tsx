@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ModalPago from "../components/ModalPago";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
 
 interface Pago {
   id: number;
@@ -204,11 +206,62 @@ function Pagos() {
     label: `${a.unit_number} - ${a.apartment_name}`,
   }));
 
+  const columns = useMemo<ColumnDef<Pago>[]>(
+    () => [
+      {
+        accessorKey: "depto",
+        header: "Nro Departamento",
+        size: 120,
+      },
+      {
+        accessorKey: "fecha",
+        header: "Fecha",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
+        accessorKey: "monto",
+        header: "Monto ($)",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "metodo_pago",
+        header: "Método de Pago",
+        cell: (info) => PAYMENT_METHOD_LABELS[String(info.getValue())] || String(info.getValue()),
+      },
+      {
+        accessorKey: "descripcion",
+        header: "Descripción",
+        cell: (info) => String(info.getValue() || "-"),
+      },
+      {
+        accessorKey: "numero_referencia",
+        header: "Nro Referencia",
+        cell: (info) => String(info.getValue() || "-"),
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="action-buttons">
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
       <div className="table-container">
         {/* Dropdown de edificios */}
-        <div className="search-container">
+        <div className="search-container" style={{ marginBottom: "20px" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
             Seleccionar Edificio:
           </label>
@@ -229,45 +282,12 @@ function Pagos() {
           </select>
         </div>
 
-        {loading ? (
-          <p>Cargando pagos...</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nro Departamento</th>
-                <th>Fecha</th>
-                <th>Monto ($)</th>
-                <th>Método de Pago</th>
-                <th>Descripción</th>
-                <th>Nro Referencia</th>
-                <th>Edición</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagos.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.depto}</td>
-                  <td>{p.fecha}</td>
-                  <td>${p.monto.toFixed(2)}</td>
-                  <td>{PAYMENT_METHOD_LABELS[p.metodo_pago] || p.metodo_pago}</td>
-                  <td>{p.descripcion || "-"}</td>
-                  <td>{p.numero_referencia || "-"}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button className="edit-btn" onClick={() => handleEdit(p)}>
-                        Editar
-                      </button>
-                      <button className="delete-btn" onClick={() => handleDelete(p.id)}>
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          data={pagos}
+          columns={columns}
+          loading={loading}
+          emptyMessage="No hay pagos registrados para este edificio"
+        />
 
         {/* Botón de añadir pago debajo de la tabla */}
         <button

@@ -16,7 +16,7 @@ function AppRoutes() {
       <Route path="/gastos" element={<Gastos />} />
       <Route path="/expensas" element={<Expensas />} />    
       <Route path="/pagos" element={<Pagos />} />          
-      <Route path="/reportes" element={<Reportes />} />    
+      {/* <Route path="/reportes" element={<Reportes />} />     */}
       <Route path="/edificios" element={<Edificios />} /> {/* <-- Nueva ruta */}
       <Route path="/departamentos/:id" element={<Departamentos />} />
     </Routes>
