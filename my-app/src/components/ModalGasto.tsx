@@ -89,6 +89,7 @@ function ModalGasto({ onSave, onClose, initialData, availableDeptos }: ModalProp
         <input
           className={inputClass("monto")}
           value={monto}
+          type="number"
           onChange={(e) => setMonto(Number(e.target.value))}
           placeholder="Monto"
         />
