@@ -122,7 +122,10 @@ function Edificios() {
         id: "acciones",
         header: "Acciones",
         cell: ({ row }) => (
-          <div className="action-buttons">
+          <div
+            className="action-buttons"
+            style={{ display: "flex", justifyContent: "flex-start", gap: "8px", alignItems: "left" }}
+          >
             <button className="edit-btn" onClick={() => handleEdit(row.original)}>
               Editar
             </button>

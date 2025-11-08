@@ -19,12 +19,14 @@ interface Building {
 
 interface Department {
   number: string;
+  name: string;
 }
 
 interface CurrentApartment {
   building_id: number;
   unit_number: number;
   building_name?: string;
+  apartment_name?: string;
 }
 
 // Eliminamos dependencia de departamentos locales: se consultarán vía API
@@ -88,9 +90,12 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
       try {
         const res = await fetch(`http://127.0.0.1:8000/apartments/${buildingId}`);
         const data = await res.json();
-        // Intentamos mapear unidad -> number
+        // Mapear con número y nombre del departamento
         const mapped: Department[] = Array.isArray(data)
-          ? data.map((a: any) => ({ number: String(a.unit_number ?? a.number ?? "") }))
+          ? data.map((a: any) => ({ 
+              number: String(a.unit_number ?? a.number ?? ""),
+              name: a.apartment_name || `Depto ${a.unit_number}` 
+            }))
           : [];
         setDepartments(mapped.filter(d => d.number));
         if (!mapped.some((d) => d.number === depto)) {
@@ -216,7 +221,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
                   <option value="" disabled>Seleccione Departamento</option>
                   {departments.map((d: Department) => (
                     <option key={d.number} value={d.number}>
-                      {d.number}
+                      {d.number} - {d.name}
                     </option>
                   ))}
                 </select>
@@ -244,9 +249,10 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
               >
                 {currentApartments.map((apt) => {
                   const buildingName = buildings.find(b => b.id === apt.building_id)?.nombre || `Edificio ${apt.building_id}`;
+                  const apartmentName = apt.apartment_name || `Depto ${apt.unit_number}`;
                   return (
                     <option key={`${apt.building_id}-${apt.unit_number}`} value={`${apt.building_id}-${apt.unit_number}`}>
-                      {buildingName} - Depto {apt.unit_number}
+                      {buildingName} - {apt.unit_number} - {apartmentName}
                     </option>
                   );
                 })}
@@ -274,7 +280,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
                   <option value="">Seleccione Departamento</option>
                   {departments.map((d: Department) => (
                     <option key={d.number} value={d.number}>
-                      {d.number}
+                      {d.number} - {d.name}
                     </option>
                   ))}
                 </select>

@@ -76,7 +76,7 @@ function Propietarios() {
       setPropietarios(propietariosBackend);
       setEdificios(edificiosData.map((b: any) => ({
         id: b.id,
-        nombre: b.name || b.nombre || `Edificio ${b.id}`,
+        nombre: b.address || b.nombre || `Edificio ${b.id}`,
         departments: [],
       })));
     } catch (err) {
@@ -306,6 +306,8 @@ function Propietarios() {
   return (
     <main className="main-container">
       <div className="table-container">
+        <h2>Gestión de Propietarios</h2>
+        
         <DataTable
           data={propietarios}
           columns={columns}

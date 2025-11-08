@@ -246,6 +246,8 @@ function Gastos() {
   return (
     <main className="main-container">
       <div className="table-container">
+        <h2>Gestión de Gastos</h2>
+        
         {/* Dropdown de edificios */}
         <div className="search-container" style={{ marginBottom: "20px" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>

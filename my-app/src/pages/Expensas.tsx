@@ -346,6 +346,8 @@ function Expensas() {
   return (
     <main className="main-container">
       <div className="table-container">
+        <h2>Gestión de Expensas</h2>
+        
         {/* Controles superiores */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
