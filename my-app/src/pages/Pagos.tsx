@@ -1,107 +1,192 @@
 import { useState, useEffect } from "react";
-import useLocalStorage from "../hooks/useLocalStorage";
+import ModalPago from "../components/ModalPago";
 
 interface Pago {
   id: number;
-  nroDepartamento: string;
+  depto: string;
   fecha: string;
   monto: number;
+  metodo_pago: string;
+  descripcion: string;
+  numero_referencia: string;
+  building_id: number;
 }
 
-interface Propietario { // Para obtener la lista de departamentos disponibles
-  depto: string;
+interface Apartment {
+  apartment_name: string;
+  unit_number: number;
+  building_id: number;
+  resident_dni: number | null;
 }
 
-const initialPagos: Pago[] = [
-    { id: 1, nroDepartamento: "101", fecha: "2025-08-05", monto: 16650.00 },
-    { id: 2, nroDepartamento: "102", fecha: "2025-08-04", monto: 12000.00 },
-];
+interface Building {
+  id: number;
+  address: string;
+}
 
-// Componente ModalPago (Definido internamente para no crear otro archivo)
-const ModalPago = ({ onSave, onClose, initialData, availableDeptos }: any) => {
-  const isNew = !initialData;
-  const initialDepto = initialData?.nroDepartamento || availableDeptos[0] || "";
+const API_BASE_URL = "http://127.0.0.1:8000";
 
-  const [depto, setDepto] = useState(initialDepto);
-  const [fecha, setFecha] = useState(initialData?.fecha || "");
-  const [monto, setMonto] = useState(initialData?.monto || 0);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
-  // Asegurar que el depto inicial sea uno válido si cambia la lista
-  useEffect(() => {
-    if (!initialData) {
-        setDepto(availableDeptos[0] || "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableDeptos]);
-
-
-  const validate = () => {
-    const newErrors: { [key: string]: string } = {};
-    if (!depto.trim()) newErrors.depto = "Departamento es obligatorio";
-    if (!fecha.trim()) newErrors.fecha = "Fecha es obligatoria";
-    if (Number(monto) <= 0) newErrors.monto = "Monto debe ser positivo";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (!validate()) return;
-    onSave({ nroDepartamento: depto, fecha, monto: Number(monto) });
-  };
-  
-  const inputClass = (field: string) => (errors[field] ? "error-input" : "");
-
-  return (
-    <div className="modal">
-      <div className="modal-content">
-        <span className="close-btn" onClick={onClose}>&times;</span>
-        <h2>{isNew ? "Añadir Pago" : "Editar Pago"}</h2>
-        
-        <select className={inputClass("depto")} value={depto} onChange={(e) => setDepto(e.target.value)}>
-            <option value="" disabled>Seleccione Departamento</option>
-            {availableDeptos.map((d: string) => (
-                <option key={d} value={d}>{d}</option>
-            ))}
-        </select>
-        {errors.depto && <small className="error-text">{errors.depto}</small>}
-
-        <input className={inputClass("fecha")} type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-        {errors.fecha && <small className="error-text">{errors.fecha}</small>}
-
-        <input className={inputClass("monto")} type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Monto" />
-        {errors.monto && <small className="error-text">{errors.monto}</small>}
-
-        <button className="save-btn" onClick={handleSubmit}>Guardar</button>
-      </div>
-    </div>
-  );
+const PAYMENT_METHOD_LABELS: { [key: string]: string } = {
+  cash: "Efectivo",
+  transfer: "Transferencia",
+  credit_card: "Tarjeta de Crédito",
+  debit_card: "Tarjeta de Débito",
 };
-// Fin ModalPago
 
 function Pagos() {
-  const [pagos, setPagos] = useLocalStorage<Pago[]>("pagosData", initialPagos);
-  const [propietarios] = useLocalStorage<Propietario[]>("propietariosData", []); 
-  
-  const [searchDepto, setSearchDepto] = useState("");
+  const [pagos, setPagos] = useState<Pago[]>([]);
+  const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(1);
   const [showModal, setShowModal] = useState(false);
   const [editingPago, setEditingPago] = useState<Pago | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = (nuevo: Omit<Pago, "id">) => {
-    if (editingPago) {
-      setPagos(
-        pagos.map((p) => (p.id === editingPago.id ? { ...p, ...nuevo } : p))
-      );
-    } else {
-      setPagos([...pagos, { id: Date.now(), ...nuevo }]);
+  // Cargar datos iniciales desde el backend
+  useEffect(() => {
+    loadBuildings();
+    loadApartments();
+  }, []);
+
+  // Cargar pagos cuando cambia el edificio seleccionado
+  useEffect(() => {
+    if (selectedBuildingId) {
+      loadApartments();
+      loadPagos();
     }
-    setShowModal(false);
-    setEditingPago(null);
+  }, [selectedBuildingId]);
+
+  const loadBuildings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/buildings`);
+      if (!response.ok) throw new Error("Error al cargar edificios");
+      const data = await response.json();
+      setBuildings(data);
+
+      // Seleccionar el primer edificio por defecto
+      if (data.length > 0 && !selectedBuildingId) {
+        setSelectedBuildingId(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error cargando edificios:", error);
+      alert("Error al cargar los edificios");
+    }
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("¿Está seguro que desea eliminar este pago?")) {
-      setPagos(pagos.filter((p) => p.id !== id));
+  const loadPagos = async () => {
+    if (!selectedBuildingId) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/payments?building_id=${selectedBuildingId}`);
+      if (!response.ok) throw new Error("Error al cargar pagos");
+      const data = await response.json();
+
+      // Transformar datos del backend al formato del frontend
+      const pagosTransformados = data.map((payment: any) => ({
+        id: payment.id,
+        depto: payment.apartment_unit_number.toString(),
+        monto: payment.amount,
+        fecha: payment.payment_date,
+        metodo_pago: payment.payment_method,
+        descripcion: payment.description || "",
+        numero_referencia: payment.reference_number || "",
+        building_id: payment.building_id,
+      }));
+
+      setPagos(pagosTransformados);
+    } catch (error) {
+      console.error("Error cargando pagos:", error);
+      alert("Error al cargar los pagos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadApartments = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
+      if (!response.ok) throw new Error("Error al cargar departamentos");
+      const data = await response.json();
+      setApartments(data);
+
+      // Seleccionar el primer building_id disponible
+      if (data.length > 0 && !selectedBuildingId) {
+        setSelectedBuildingId(data[0].building_id);
+      }
+    } catch (error) {
+      console.error("Error cargando departamentos:", error);
+    }
+  };
+
+  const handleSave = async (nuevo: Omit<Pago, "id" | "building_id">) => {
+    try {
+      if (!selectedBuildingId) {
+        alert("No hay un edificio seleccionado");
+        return;
+      }
+
+      // Transformar datos del frontend al formato del backend
+      const paymentData = {
+        amount: Number(nuevo.monto),
+        payment_method: nuevo.metodo_pago,
+        building_id: selectedBuildingId,
+        apartment_unit_number: parseInt(nuevo.depto),
+        description: nuevo.descripcion,
+        reference_number: nuevo.numero_referencia,
+        payment_date: nuevo.fecha,
+      };
+
+      console.log("Guardando pago con datos:", paymentData);
+
+      if (editingPago) {
+        // Actualizar pago existente
+        const response = await fetch(`${API_BASE_URL}/payments/${editingPago.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paymentData),
+        });
+
+        if (!response.ok) throw new Error("Error al actualizar pago");
+
+        await loadPagos(); // Recargar la lista
+        setEditingPago(null);
+      } else {
+        // Crear nuevo pago
+        const response = await fetch(`${API_BASE_URL}/payments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paymentData),
+        });
+
+        if (!response.ok) throw new Error("Error al crear pago");
+
+        await loadPagos(); // Recargar la lista
+      }
+
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error guardando pago:", error);
+      alert("Error al guardar el pago");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("¿Está seguro que desea eliminar este pago?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar pago");
+
+      await loadPagos(); // Recargar la lista
+    } catch (error) {
+      console.error("Error eliminando pago:", error);
+      alert("Error al eliminar el pago");
     }
   };
 
@@ -110,56 +195,89 @@ function Pagos() {
     setShowModal(true);
   };
 
-  const filteredPagos = pagos.filter((p) =>
-    p.nroDepartamento.includes(searchDepto)
-  );
-  
-  const availableDeptos = Array.from(new Set(propietarios.map(p => p.depto)));
+  // Filtrar apartamentos del edificio seleccionado
+  const apartmentsInBuilding = apartments.filter((a) => a.building_id === selectedBuildingId);
+
+  // Crear opciones que incluyan tanto el número como el nombre del departamento
+  const availableDeptos = apartmentsInBuilding.map((a) => ({
+    value: a.unit_number.toString(),
+    label: `${a.unit_number} - ${a.apartment_name}`,
+  }));
 
   return (
     <main className="main-container">
       <div className="table-container">
+        {/* Dropdown de edificios */}
         <div className="search-container">
-          <input
-            type="text"
-            placeholder="Buscar por Nro Departamento"
-            value={searchDepto}
-            onChange={(e) => setSearchDepto(e.target.value)}
-          />
-          <button onClick={() => {}}>Buscar</button>
+          <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
+            Seleccionar Edificio:
+          </label>
+          <select
+            id="building-select"
+            value={selectedBuildingId || ""}
+            onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
+            style={{ padding: "8px", fontSize: "14px" }}
+          >
+            <option value="" disabled>
+              Seleccione un edificio
+            </option>
+            {buildings.map((building) => (
+              <option key={building.id} value={building.id}>
+                {building.address}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Nro Departamento</th>
-              <th>Fecha</th>
-              <th>Monto</th>
-              <th>Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPagos.map((p) => (
-              <tr key={p.id}>
-                <td>{p.nroDepartamento}</td>
-                <td>{p.fecha}</td>
-                <td>${p.monto.toFixed(2)}</td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button className="edit-btn" onClick={() => handleEdit(p)}>
-                      Editar
-                    </button>
-                    <button className="delete-btn" onClick={() => handleDelete(p.id)}>
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
+        {loading ? (
+          <p>Cargando pagos...</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Nro Departamento</th>
+                <th>Fecha</th>
+                <th>Monto ($)</th>
+                <th>Método de Pago</th>
+                <th>Descripción</th>
+                <th>Nro Referencia</th>
+                <th>Edición</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pagos.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.depto}</td>
+                  <td>{p.fecha}</td>
+                  <td>${p.monto.toFixed(2)}</td>
+                  <td>{PAYMENT_METHOD_LABELS[p.metodo_pago] || p.metodo_pago}</td>
+                  <td>{p.descripcion || "-"}</td>
+                  <td>{p.numero_referencia || "-"}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button className="edit-btn" onClick={() => handleEdit(p)}>
+                        Editar
+                      </button>
+                      <button className="delete-btn" onClick={() => handleDelete(p.id)}>
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-        <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => { setShowModal(true); setEditingPago(null); }}>
+        {/* Botón de añadir pago debajo de la tabla */}
+        <button
+          className="add-btn"
+          style={{ marginTop: "20px" }}
+          onClick={() => {
+            setShowModal(true);
+            setEditingPago(null);
+          }}
+        >
           Añadir Pago
         </button>
       </div>
@@ -167,9 +285,23 @@ function Pagos() {
       {showModal && (
         <ModalPago
           onSave={handleSave}
-          onClose={() => { setShowModal(false); setEditingPago(null); }}
-          initialData={editingPago || undefined}
-          availableDeptos={availableDeptos} 
+          onClose={() => {
+            setShowModal(false);
+            setEditingPago(null);
+          }}
+          initialData={
+            editingPago
+              ? {
+                  depto: editingPago.depto,
+                  monto: editingPago.monto,
+                  fecha: editingPago.fecha,
+                  metodo_pago: editingPago.metodo_pago,
+                  descripcion: editingPago.descripcion,
+                  numero_referencia: editingPago.numero_referencia,
+                }
+              : undefined
+          }
+          availableDeptos={availableDeptos}
         />
       )}
     </main>
