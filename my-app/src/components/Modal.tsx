@@ -41,6 +41,8 @@ interface ModalProps {
   isAddingApartment?: boolean; // Indica si se está agregando un departamento a un propietario existente
 }
 
+const API_BASE_URL = "http://127.0.0.1:8000";
+
 function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentApartments = [], isAddingApartment = false }: ModalProps) {
   const [nombre, setNombre] = useState("");
   const [dni, setDni] = useState<string>("");
@@ -88,7 +90,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
     const fetchDepartments = async () => {
       if (!buildingId) { setDepartments([]); return; }
       try {
-        const res = await fetch(`http://127.0.0.1:8000/apartments/${buildingId}`);
+        const res = await fetch(`${API_BASE_URL}/apartments/${buildingId}`);
         const data = await res.json();
         // Mapear con número y nombre del departamento
         const mapped: Department[] = Array.isArray(data)
@@ -124,7 +126,14 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
     // Validaciones normales
     if (!dni.trim()) newErrors.dni = "DNI es obligatorio";
     if (!nombre.trim()) newErrors.nombre = "Nombre es obligatorio";
-    if (!telefono.trim()) newErrors.telefono = "Teléfono es obligatorio";
+    if (!telefono.trim()) {
+      newErrors.telefono = "Teléfono es obligatorio";
+    } else {
+      const tel = telefono.trim();
+      if (!/^\d+$/.test(tel)) {
+      newErrors.telefono = "Teléfono debe contener solo números";
+      }
+    }
     if (!mail.trim()) newErrors.mail = "Mail es obligatorio";
     // En modo nuevo, departamento y edificio son obligatorios
     if (isNew && !depto.trim()) newErrors.depto = "Departamento es obligatorio";

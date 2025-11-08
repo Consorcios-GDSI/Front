@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
 
 interface BillingStatement {
   id: number;
@@ -61,6 +63,7 @@ function Expensas() {
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [reconciling, setReconciling] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -87,7 +90,7 @@ function Expensas() {
       }
     } catch (error) {
       console.error("Error cargando edificios:", error);
-      alert("Error al cargar los edificios");
+      showError("Error al cargar los edificios");
     }
   };
 
@@ -100,6 +103,7 @@ function Expensas() {
       setApartments(data);
     } catch (error) {
       console.error("Error cargando departamentos:", error);
+      showError("Error al cargar departamentos");
     }
   };
 
@@ -117,14 +121,15 @@ function Expensas() {
           setBillingStatements([]);
           return;
         }
-        throw new Error("Error al cargar expensas");
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
       setBillingStatements(data);
     } catch (error) {
       console.error("Error cargando expensas:", error);
-      alert("Error al cargar las expensas");
+      showError(error instanceof Error ? error.message : "Error al cargar las expensas");
     } finally {
       setLoading(false);
     }
@@ -132,7 +137,7 @@ function Expensas() {
 
   const handleCalculate = async (recalculate: boolean = false) => {
     if (!selectedBuildingId) {
-      alert("Seleccione un edificio");
+      showError("Seleccione un edificio");
       return;
     }
 
@@ -158,16 +163,16 @@ function Expensas() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Error al calcular expensas");
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setBillingStatements(data);
-      alert(`Expensas calculadas exitosamente para ${data.length} departamentos`);
+      success(`Expensas calculadas exitosamente para ${data.length} departamentos`);
     } catch (error: any) {
       console.error("Error calculando expensas:", error);
-      alert(error.message || "Error al calcular las expensas");
+      showError(error instanceof Error ? error.message : "Error al calcular las expensas");
     } finally {
       setCalculating(false);
     }
@@ -175,7 +180,7 @@ function Expensas() {
 
   const handleReconcile = async () => {
     if (!selectedBuildingId) {
-      alert("Seleccione un edificio");
+      showError("Seleccione un edificio");
       return;
     }
 
@@ -198,21 +203,19 @@ function Expensas() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Error al reconciliar pagos");
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       await loadBillingStatements(); // Recargar datos
       
-      alert(
-        `Reconciliación completada:\n\n` +
-        `Total reconciliado: $${result.total_reconciled?.toFixed(2) || 0}\n` +
-        `Departamentos actualizados: ${result.reconciled_count || 0}`
+      success(
+        `Reconciliación completada: Total reconciliado $${result.total_reconciled?.toFixed(2) || 0}, ${result.reconciled_count || 0} departamentos actualizados`
       );
     } catch (error: any) {
       console.error("Error reconciliando pagos:", error);
-      alert(error.message || "Error al reconciliar los pagos");
+      showError(error instanceof Error ? error.message : "Error al reconciliar los pagos");
     } finally {
       setReconciling(false);
     }
@@ -228,12 +231,16 @@ function Expensas() {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Error al eliminar expensa");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
 
       await loadBillingStatements();
+      success("Expensa eliminada exitosamente");
     } catch (error) {
       console.error("Error eliminando expensa:", error);
-      alert("Error al eliminar la expensa");
+      showError(error instanceof Error ? error.message : "Error al eliminar la expensa");
     }
   };
 
@@ -254,7 +261,6 @@ function Expensas() {
         id: "nombre",
         header: "Nombre",
         cell: ({ row }) => getApartmentName(row.original.apartment_unit_number),
-        enableSorting: false,
       },
       {
         accessorKey: "particular_expenses",
@@ -345,6 +351,7 @@ function Expensas() {
 
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Gestión de Expensas</h2>
         

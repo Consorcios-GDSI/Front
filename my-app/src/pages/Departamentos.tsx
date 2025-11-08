@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import { ColumnDef } from "@tanstack/react-table";
 import ModalDepartamento from "../components/ModalDepartamento";
 import DataTable from "../components/DataTable";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
 
 interface Departamento {
   apartment_name: string;
@@ -10,6 +12,8 @@ interface Departamento {
   resident_dni: number | null;
   building_id: number;
 }
+
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 interface DepartamentoForm {
   apartment_name: string;
@@ -24,11 +28,12 @@ function Departamentos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   const fetchDepartamentos = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/apartments/${buildingId}`);
+      const res = await fetch(`${API_BASE_URL}/apartments/${buildingId}`);
       if (!res.ok) throw new Error("Error al obtener departamentos");
       const data = await res.json();
       setDepartamentos(data);
@@ -46,17 +51,21 @@ function Departamentos() {
 
   const handleSave = async (nuevo: DepartamentoForm) => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/apartments", {
+      const response = await fetch(`${API_BASE_URL}/apartments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nuevo),
       });
-      if (!response.ok) throw new Error("Error creando departamento");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       await fetchDepartamentos();
+      success("Departamento creado exitosamente");
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      alert("No se pudo crear el departamento");
+      showError(err instanceof Error ? err.message : "No se pudo crear el departamento");
     }
   };
 
@@ -64,16 +73,20 @@ function Departamentos() {
     if (!window.confirm(`¿Está seguro que desea eliminar el departamento ${apartmentName}?`)) return;
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/apartments/${buildingId}/${unitNumber}`,
+        `${API_BASE_URL}/apartments/${buildingId}/${unitNumber}`,
         {
           method: "DELETE",
         }
       );
-      if (!response.ok) throw new Error("Error eliminando departamento");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       await fetchDepartamentos();
+      success("Departamento eliminado exitosamente");
     } catch (err) {
       console.error(err);
-      alert("No se pudo eliminar el departamento");
+      showError(err instanceof Error ? err.message : "No se pudo eliminar el departamento");
     }
   };
 
@@ -81,16 +94,20 @@ function Departamentos() {
     if (!window.confirm(`¿Está seguro que desea desasignar el residente del departamento ${apartmentName}?`)) return;
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/apartments/${buildingId}/${unitNumber}`,
+        `${API_BASE_URL}/apartments/${buildingId}/${unitNumber}`,
         {
           method: "PUT",
         }
       );
-      if (!response.ok) throw new Error("Error desasignando residente");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       await fetchDepartamentos();
+      success("Residente desasignado exitosamente");
     } catch (err) {
       console.error(err);
-      alert("No se pudo desasignar el residente");
+      showError(err instanceof Error ? err.message : "No se pudo desasignar el residente");
     }
   };
 
@@ -139,6 +156,7 @@ function Departamentos() {
 
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Departamentos del Edificio {buildingId}</h2>
         {loading ? (

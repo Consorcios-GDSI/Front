@@ -1,4 +1,4 @@
-import { FaUserCircle, FaHome } from "react-icons/fa";
+import { FaHome } from "react-icons/fa";
 
 function Header() {
   return (
@@ -17,11 +17,11 @@ function Header() {
         <a href="/expensas" className="menu-item">Expensas</a>
         {/* <a href="/reportes" className="menu-item">Reportes</a> */}
       </nav>
-
+{/* 
       <div className="user-info">
         <span>Franco</span>
         <FaUserCircle size={28} />
-      </div>
+      </div> */}
     </header>
   );
 }

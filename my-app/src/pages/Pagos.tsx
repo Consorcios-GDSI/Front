@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import ModalPago from "../components/ModalPago";
 import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
 
 interface Pago {
   id: number;
@@ -43,6 +45,7 @@ function Pagos() {
   const [showModal, setShowModal] = useState(false);
   const [editingPago, setEditingPago] = useState<Pago | null>(null);
   const [loading, setLoading] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   // Cargar datos iniciales desde el backend
   useEffect(() => {
@@ -71,7 +74,7 @@ function Pagos() {
       }
     } catch (error) {
       console.error("Error cargando edificios:", error);
-      alert("Error al cargar los edificios");
+      showError("Error al cargar los edificios");
     }
   };
 
@@ -99,7 +102,7 @@ function Pagos() {
       setPagos(pagosTransformados);
     } catch (error) {
       console.error("Error cargando pagos:", error);
-      alert("Error al cargar los pagos");
+      showError("Error al cargar los pagos");
     } finally {
       setLoading(false);
     }
@@ -118,13 +121,14 @@ function Pagos() {
       }
     } catch (error) {
       console.error("Error cargando departamentos:", error);
+      showError("Error al cargar departamentos");
     }
   };
 
   const handleSave = async (nuevo: Omit<Pago, "id" | "building_id">) => {
     try {
       if (!selectedBuildingId) {
-        alert("No hay un edificio seleccionado");
+        showError("No hay un edificio seleccionado");
         return;
       }
 
@@ -149,9 +153,13 @@ function Pagos() {
           body: JSON.stringify(paymentData),
         });
 
-        if (!response.ok) throw new Error("Error al actualizar pago");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
 
         await loadPagos(); // Recargar la lista
+        success("Pago actualizado exitosamente");
         setEditingPago(null);
       } else {
         // Crear nuevo pago
@@ -161,15 +169,19 @@ function Pagos() {
           body: JSON.stringify(paymentData),
         });
 
-        if (!response.ok) throw new Error("Error al crear pago");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
 
         await loadPagos(); // Recargar la lista
+        success("Pago creado exitosamente");
       }
 
       setShowModal(false);
     } catch (error) {
       console.error("Error guardando pago:", error);
-      alert("Error al guardar el pago");
+      showError(error instanceof Error ? error.message : "Error al guardar el pago");
     }
   };
 
@@ -183,12 +195,16 @@ function Pagos() {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Error al eliminar pago");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
 
       await loadPagos(); // Recargar la lista
+      success("Pago eliminado exitosamente");
     } catch (error) {
       console.error("Error eliminando pago:", error);
-      alert("Error al eliminar el pago");
+      showError(error instanceof Error ? error.message : "Error al eliminar el pago");
     }
   };
 
@@ -259,6 +275,7 @@ function Pagos() {
 
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Gestión de Pagos</h2>
         

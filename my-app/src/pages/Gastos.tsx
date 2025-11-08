@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import ModalGasto from "../components/ModalGasto";
 import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
 
 interface Gasto {
   id: number;
@@ -35,6 +37,7 @@ function Gastos() {
   const [showModal, setShowModal] = useState(false);
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [loading, setLoading] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   // Cargar datos iniciales desde el backend
   useEffect(() => {
@@ -63,7 +66,7 @@ function Gastos() {
       }
     } catch (error) {
       console.error("Error cargando edificios:", error);
-      alert("Error al cargar los edificios");
+      showError("Error al cargar los edificios");
     }
   };
 
@@ -90,7 +93,7 @@ function Gastos() {
       setGastos(gastosTransformados);
     } catch (error) {
       console.error("Error cargando gastos:", error);
-      alert("Error al cargar los gastos");
+      showError("Error al cargar los gastos");
     } finally {
       setLoading(false);
     }
@@ -109,13 +112,14 @@ function Gastos() {
       }
     } catch (error) {
       console.error("Error cargando departamentos:", error);
+      showError("Error al cargar departamentos");
     }
   };
 
   const handleSave = async (nuevo: Omit<Gasto, "id" | "building_id">) => {
     try {
       if (!selectedBuildingId) {
-        alert("No hay un edificio seleccionado");
+        showError("No hay un edificio seleccionado");
         return;
       }
 
@@ -139,9 +143,13 @@ function Gastos() {
           body: JSON.stringify(expenseData)
         });
 
-        if (!response.ok) throw new Error("Error al actualizar gasto");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         
         await loadGastos(); // Recargar la lista
+        success("Gasto actualizado exitosamente");
         setEditingGasto(null);
       } else {
         // Crear nuevo gasto
@@ -151,15 +159,19 @@ function Gastos() {
           body: JSON.stringify(expenseData)
         });
 
-        if (!response.ok) throw new Error("Error al crear gasto");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         
         await loadGastos(); // Recargar la lista
+        success("Gasto creado exitosamente");
       }
       
       setShowModal(false);
     } catch (error) {
       console.error("Error guardando gasto:", error);
-      alert("Error al guardar el gasto");
+      showError(error instanceof Error ? error.message : "Error al guardar el gasto");
     }
   };
 
@@ -173,12 +185,16 @@ function Gastos() {
         method: "DELETE"
       });
 
-      if (!response.ok) throw new Error("Error al eliminar gasto");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       
       await loadGastos(); // Recargar la lista
+      success("Gasto eliminado exitosamente");
     } catch (error) {
       console.error("Error eliminando gasto:", error);
-      alert("Error al eliminar el gasto");
+      showError(error instanceof Error ? error.message : "Error al eliminar el gasto");
     }
   };
 
@@ -245,6 +261,7 @@ function Gastos() {
 
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Gestión de Gastos</h2>
         

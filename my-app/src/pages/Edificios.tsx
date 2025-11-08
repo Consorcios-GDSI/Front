@@ -4,11 +4,15 @@ import ModalEdificio from "../components/ModalEdificio";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
 
 interface Edificio {
   id: number;
   address: string;
 }
+
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 function Edificios() {
   const [edificios, setEdificios] = useLocalStorage<Edificio[]>(
@@ -19,15 +23,17 @@ function Edificios() {
   const [showModal, setShowModal] = useState(false);
   const [editingEdificio, setEditingEdificio] = useState<Edificio | null>(null);
   const navigate = useNavigate();
+  const { success, error, ToastContainer } = useToast();
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/buildings")
+    fetch(`${API_BASE_URL}/buildings`)
       .then((res) => res.json())
       .then((data) => {
         setEdificios(data);
       })
       .catch((err) => {
         console.error("Error al cargar edificios:", err);
+        error("Error al cargar los edificios");
       });
   }, []);
 
@@ -35,39 +41,47 @@ function Edificios() {
     if (editingEdificio) {
       // Editar dirección en el backend
       try {
-        const response = await fetch(`http://127.0.0.1:8000/buildings/${editingEdificio.id}`, {
+        const response = await fetch(`${API_BASE_URL}/buildings/${editingEdificio.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ address: nuevo.address }),
         });
-        if (!response.ok) throw new Error("Error actualizando dirección");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         // Actualizar en frontend
         setEdificios(
           edificios.map((e) => (e.id === editingEdificio.id ? { ...e, address: nuevo.address } : e))
         );
+        success("Edificio actualizado exitosamente");
       } catch (err) {
         console.error(err);
-        alert("No se pudo actualizar la dirección");
+        error(err instanceof Error ? err.message : "No se pudo actualizar la dirección");
       }
     } else {
       // Añadir edificio en el backend
       try {
-        const response = await fetch("http://127.0.0.1:8000/buildings", {
+        const response = await fetch(`${API_BASE_URL}/buildings`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ address: nuevo.address }),
         });
-        if (!response.ok) throw new Error("Error creando edificio");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         // Vuelvo a pedir la lista actualizada al backend
-        const edificiosActualizados = await fetch("http://127.0.0.1:8000/buildings").then(res => res.json());
+        const edificiosActualizados = await fetch(`${API_BASE_URL}/buildings`).then(res => res.json());
         setEdificios(edificiosActualizados);
+        success("Edificio creado exitosamente");
       } catch (err) {
         console.error(err);
-        alert("No se pudo crear el edificio");
+        error(err instanceof Error ? err.message : "No se pudo crear el edificio");
       }
     }
     setShowModal(false);
@@ -77,14 +91,18 @@ function Edificios() {
   const handleDelete = async (id: number, address: string) => {
     if (!window.confirm(`¿Está seguro que desea eliminar el edificio en ${address}?`)) return;
     try {
-      const response = await fetch(`http://127.0.0.1:8000/buildings/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/buildings/${id}`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Error eliminando edificio");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       setEdificios(edificios.filter((e) => e.id !== id));
+      success("Edificio eliminado exitosamente");
     } catch (err) {
       console.error(err);
-      alert("No se pudo eliminar el edificio");
+      error(err instanceof Error ? err.message : "No se pudo eliminar el edificio");
     }
   };
 
@@ -145,6 +163,7 @@ function Edificios() {
 
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Gestión de Edificios</h2>
         
