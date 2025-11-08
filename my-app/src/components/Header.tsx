@@ -13,8 +13,8 @@ function Header() {
         <a href="/edificios" className="menu-item">Gestión de Edificios</a> {/* <-- Nuevo Enlace */}
         <a href="/propietarios" className="menu-item">Gestión de Propietarios</a>
         <a href="/gastos" className="menu-item">Gastos</a>
-        <a href="/expensas" className="menu-item">Expensas</a>
         <a href="/pagos" className="menu-item">Pagos</a>
+        <a href="/expensas" className="menu-item">Expensas</a>
         <a href="/reportes" className="menu-item">Reportes</a>
       </nav>
 
