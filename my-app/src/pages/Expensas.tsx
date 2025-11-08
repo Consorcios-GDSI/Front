@@ -367,7 +367,7 @@ function Expensas() {
                 id="building-select"
                 value={selectedBuildingId || ""}
                 onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px" }}
+                style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
               >
                 <option value="" disabled>
                   Seleccione un edificio
@@ -386,7 +386,7 @@ function Expensas() {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", marginRight: "5px" }}
+                style={{ padding: "8px", fontSize: "14px", marginRight: "5px", borderRadius: '6px' }}
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                   <option key={month} value={month}>
@@ -398,7 +398,7 @@ function Expensas() {
                 type="number"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", width: "100px" }}
+                style={{ padding: "8px", fontSize: "14px", width: "100px", borderRadius: '6px' }}
                 min="2000"
                 max="2100"
               />
@@ -416,7 +416,7 @@ function Expensas() {
               {calculating ? "Calculando..." : "Calcular Expensas"}
             </button>
             <button
-              className="edit-btn"
+              className="add-btn"
               onClick={() => handleCalculate(true)}
               disabled={calculating}
               style={{ opacity: calculating ? 0.6 : 1 }}
@@ -424,7 +424,7 @@ function Expensas() {
               Recalcular
             </button>
             <button
-              className="save-btn"
+              className="add-btn"
               onClick={handleReconcile}
               disabled={reconciling}
               style={{ opacity: reconciling ? 0.6 : 1 }}

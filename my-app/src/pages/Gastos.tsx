@@ -274,7 +274,7 @@ function Gastos() {
             id="building-select"
             value={selectedBuildingId || ""}
             onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-            style={{ padding: "8px", fontSize: "14px" }}
+            style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
           >
             <option value="" disabled>Seleccione un edificio</option>
             {buildings.map(building => (
