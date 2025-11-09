@@ -87,7 +87,7 @@ function ModalPago({ onSave, onClose, initialData, availableDeptos }: ModalProps
         <span className="close-btn" onClick={onClose}>
           &times;
         </span>
-        <h2>{isNew ? "Añadir Pago" : "Editar Pago"}</h2>
+        <h2 style={{"textAlign": "center"}}>{isNew ? "Añadir Pago" : "Editar Pago"}</h2>
 
         {/* Campo de Departamento */}
         <select

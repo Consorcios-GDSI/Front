@@ -9,11 +9,11 @@
 
 .search-input {
   width: 100%;
-  max-width: 400px;
+  max-width: 200px;
   padding: 10px 15px;
   font-size: 14px;
   border: 2px solid #ddd;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   transition: border-color 0.3s;
 }
 
@@ -24,7 +24,7 @@
 
 .table-wrapper {
   overflow-x: auto;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -111,14 +111,14 @@
   margin-top: 20px;
   padding: 15px;
   background: #f8f9fa;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
 }
 
 .pagination-btn {
   padding: 8px 12px;
   background: white;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: var(--border-radius);
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
@@ -144,7 +144,7 @@
 .page-size-select {
   padding: 8px 12px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: var(--border-radius);
   background: white;
   cursor: pointer;
   font-size: 14px;
@@ -167,7 +167,7 @@
 .data-table .view-btn {
   padding: 6px 12px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--border-radius);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;

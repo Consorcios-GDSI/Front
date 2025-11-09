@@ -116,14 +116,14 @@ function Edificios() {
       {
         accessorKey: "address",
         header: "Dirección",
-        cell: (info) => <strong>{String(info.getValue())}</strong>,
+        cell: (info) => { return String(info.getValue()) },
       },
       {
         id: "departamentos",
         header: "Departamentos",
         cell: ({ row }) => (
           <button
-            className="view-btn"
+            className="btn-fancy"
             onClick={() => navigate(`/departamentos/${row.original.id}`)}
           >
             Ver Departamentos
@@ -139,11 +139,15 @@ function Edificios() {
             className="action-buttons"
             style={{ display: "flex", justifyContent: "flex-start", gap: "8px", alignItems: "left" }}
           >
-            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+            <button
+              className="btn-fancy"
+              onClick={() => handleEdit(row.original)}
+            >
               Editar
             </button>
             <button
-              className="delete-btn"
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
               onClick={() => handleDelete(row.original.id, row.original.address)}
             >
               Eliminar
@@ -169,7 +173,7 @@ function Edificios() {
         />
         
         <button
-          className="add-btn"
+          className="btn-fancy"
           style={{ marginTop: "20px" }}
           onClick={() => {
             setEditingEdificio(null);

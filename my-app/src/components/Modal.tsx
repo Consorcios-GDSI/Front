@@ -171,7 +171,7 @@ function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentA
         <span className="close-btn" onClick={onClose}>
           &times;
         </span>
-        <h2>{isAddingApartment ? "Agregar Departamento" : isNew ? "Añadir Propietario" : "Editar Propietario"}</h2>
+        <h2 style={{"textAlign": "center"}}>{isAddingApartment ? "Agregar Departamento" : isNew ? "Añadir Propietario" : "Editar Propietario"}</h2>
 
   <input 
     className={inputClass("dni")} 

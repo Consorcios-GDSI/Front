@@ -287,21 +287,25 @@ function Propietarios() {
       },
       {
         id: "edicion",
-        header: "Edición",
+        header: "Acciones",
         cell: ({ row }) => (
           <div style={{ display: "flex", gap: "10px" }}>
-            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
-              Editar
+            <button               
+              className="btn-fancy"
+              onClick={() => handleEdit(row.original)}>
+                Editar
             </button>
             <button 
-              className="add-apartment-btn" 
+              className="btn-fancy"
               onClick={() => handleAddApartment(row.original)}
-              style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
             >
-              + Depto
+                + Depto
             </button>
-            <button className="delete-btn" onClick={() => handleDelete(row.original.dni, row.original.name)}>
-              Eliminar
+            <button 
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
+              onClick={() => handleDelete(row.original.dni, row.original.name)}>
+                Eliminar
             </button>
           </div>
         ),
@@ -323,7 +327,7 @@ function Propietarios() {
           emptyMessage="No hay propietarios registrados"
         />
         <button
-          className="add-btn"
+          className="btn-fancy"
           onClick={() => {
             setEditingPropietario(null);
             setCurrentApartments([]);

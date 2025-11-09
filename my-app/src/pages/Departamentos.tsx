@@ -126,7 +126,7 @@ function Departamentos() {
           <div style={{ display: "flex", gap: "10px" }}>
             {row.original.resident_dni && (
               <button 
-                className="edit-btn" 
+                className="btn-fancy"
                 onClick={() => handleUnassignResident(row.original.unit_number, row.original.apartment_name)}
                 title="Desasignar residente"
               >
@@ -134,7 +134,8 @@ function Departamentos() {
               </button>
             )}
             <button
-              className="delete-btn"
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
               onClick={() => handleDelete(row.original.unit_number, row.original.apartment_name)}
             >
               Eliminar
@@ -164,7 +165,7 @@ function Departamentos() {
           />
         )}
         <button
-          className="add-btn"
+          className="btn-fancy"
           onClick={() => setShowModal(true)}
         >
           Añadir Departamento

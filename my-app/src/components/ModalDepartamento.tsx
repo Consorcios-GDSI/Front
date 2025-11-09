@@ -46,7 +46,7 @@ function ModalDepartamento({ onSave, onClose, buildingId }: ModalProps) {
         <span className="close-btn" onClick={onClose}>
           &times;
         </span>
-        <h2>Añadir Departamento</h2>
+        <h2 style={{ "textAlign": "center" }}>Añadir Departamento</h2>
         
         <label>Nombre del Departamento</label>
         <input

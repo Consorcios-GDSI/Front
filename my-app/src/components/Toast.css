@@ -14,7 +14,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   animation: slideIn 0.3s ease-out;
   background: white;
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--border-radius);
 }
 
 .toast-success .toast-icon {

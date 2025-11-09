@@ -214,8 +214,17 @@ function Gastos() {
         size: 120,
       },
       {
+        accessorKey: "fecha",
+        header: "Fecha",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
         accessorKey: "tipo",
         header: "Tipo",
+      },
+      {
+        accessorKey: "descripcion",
+        header: "Descripción",
       },
       {
         accessorKey: "monto",
@@ -223,23 +232,19 @@ function Gastos() {
         cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
       },
       {
-        accessorKey: "fecha",
-        header: "Fecha",
-        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
-      },
-      {
-        accessorKey: "descripcion",
-        header: "Descripción",
-      },
-      {
         id: "acciones",
         header: "Acciones",
         cell: ({ row }) => (
-          <div className="action-buttons">
-            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              className="btn-fancy"
+              onClick={() => handleEdit(row.original)}>
               Editar
             </button>
-            <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+            <button               
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
+              onClick={() => handleDelete(row.original.id)}>
               Eliminar
             </button>
           </div>
@@ -257,15 +262,15 @@ function Gastos() {
         <h2>Gestión de Gastos</h2>
         
         {/* Dropdown de edificios */}
-        <div className="search-container" style={{ marginBottom: "20px" }}>
+        <div className="search-container" style={{ marginBottom: "20px", display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
-            Seleccionar Edificio:
+            Edificio:
           </label>
           <select
             id="building-select"
             value={selectedBuildingId || ""}
             onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-            style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
+            className="search-input"
           >
             <option value="" disabled>Seleccione un edificio</option>
             {buildings.map(building => (
@@ -284,7 +289,9 @@ function Gastos() {
         />
 
         {/* Botón de añadir gasto debajo de la tabla */}
-        <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => { setShowModal(true); setEditingGasto(null); }}>
+        <button
+          className="btn-fancy"
+          onClick={() => { setShowModal(true); setEditingGasto(null); }}>
           Añadir gasto
         </button>
       </div>
