@@ -1,7 +1,5 @@
-import { useNavigate } from "react-router-dom";
-
 function Reportes() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const reportes = [
     { nombre: "Reporte de Deudas", path: "/reportes/deudas" },

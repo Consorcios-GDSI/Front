@@ -7,10 +7,6 @@ interface ValidationError {
   ctx?: any;
 }
 
-interface APIErrorResponse {
-  detail: string | ValidationError[];
-}
-
 /**
  * Formatea errores de la API para mostrarlos en toasts
  * Soporta tanto errores simples (string) como errores de validación (array)

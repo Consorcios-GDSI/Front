@@ -4,7 +4,6 @@ import Propietarios from "../pages/Propietarios";
 import Gastos from "../pages/Gastos";
 import Expensas from "../pages/Expensas"; 
 import Pagos from "../pages/Pagos";     
-import Reportes from "../pages/Reportes"; 
 import Edificios from "../pages/Edificios"; // <-- Nuevo import
 import Departamentos from "../pages/Departamentos";
 
