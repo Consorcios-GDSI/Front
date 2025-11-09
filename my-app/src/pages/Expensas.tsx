@@ -1,11 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import DataTable from "../components/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
 import { Apartment } from "../types/apartment";
 import { Building } from "../types/building";
 import { API_BASE_URL } from "../config";
+
+// Extend table module for custom filter functions
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    dateRange: FilterFn<unknown>;
+    numberCompare: FilterFn<unknown>;
+  }
+}
 
 interface BillingStatement {
   id: number;
@@ -250,6 +258,9 @@ function Expensas() {
         accessorKey: "apartment_unit_number",
         header: "Depto",
         size: 80,
+        meta: {
+          filterVariant: 'text',
+        },
       },
       {
         id: "nombre",
@@ -285,6 +296,10 @@ function Expensas() {
         accessorKey: "total_amount",
         header: "Total",
         cell: (info) => <strong>${Number(info.getValue()).toFixed(2)}</strong>,
+        meta: {
+          filterVariant: 'number',
+        },
+        filterFn: 'numberCompare',
       },
       {
         accessorKey: "paid_amount",
@@ -324,11 +339,25 @@ function Expensas() {
             </span>
           );
         },
+        meta: {
+          filterVariant: 'select',
+          selectOptions: [
+            { value: 'pending', label: 'Pendiente' },
+            { value: 'partial', label: 'Parcial' },
+            { value: 'paid', label: 'Pagado' },
+            { value: 'overdue', label: 'Vencido' },
+            { value: 'credit', label: 'Crédito' },
+          ],
+        },
       },
       {
         accessorKey: "due_date",
         header: "Vencimiento",
         cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+        meta: {
+          filterVariant: 'date',
+        },
+        filterFn: 'dateRange',
       },
       {
         id: "acciones",

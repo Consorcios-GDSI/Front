@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import ModalGasto from "../components/ModalGasto";
 import DataTable from "../components/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
 import { Apartment } from "../types/apartment";
 import { Building } from "../types/building";
 import { API_BASE_URL } from "../config";
+
+// Extend table module for custom filter functions
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    dateRange: FilterFn<unknown>;
+    numberCompare: FilterFn<unknown>;
+  }
+}
 
 interface Gasto {
   id: number;
@@ -212,15 +220,29 @@ function Gastos() {
         accessorKey: "depto",
         header: "Nro Departamento",
         size: 120,
+        meta: {
+          filterVariant: 'text',
+        },
       },
       {
         accessorKey: "fecha",
         header: "Fecha",
         cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+        meta: {
+          filterVariant: 'date',
+        },
+        filterFn: 'dateRange',
       },
       {
         accessorKey: "tipo",
         header: "Tipo",
+        meta: {
+          filterVariant: 'select',
+          selectOptions: [
+            { value: 'GENERAL', label: 'General' },
+            { value: 'INDIVIDUAL', label: 'Individual' },
+          ],
+        },
       },
       {
         accessorKey: "descripcion",
@@ -230,6 +252,10 @@ function Gastos() {
         accessorKey: "monto",
         header: "Monto ($)",
         cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+        meta: {
+          filterVariant: 'number',
+        },
+        filterFn: 'numberCompare',
       },
       {
         id: "acciones",

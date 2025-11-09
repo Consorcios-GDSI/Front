@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import ModalPago from "../components/ModalPago";
 import DataTable from "../components/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
 import { Apartment } from "../types/apartment";
 import { Building } from "../types/building";
 import { API_BASE_URL } from "../config";
+
+// Extend table module for custom filter functions
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    dateRange: FilterFn<unknown>;
+    numberCompare: FilterFn<unknown>;
+  }
+}
 
 interface Pago {
   id: number;
@@ -220,16 +228,32 @@ function Pagos() {
         accessorKey: "depto",
         header: "Nro Departamento",
         size: 120,
+        meta: {
+          filterVariant: 'text',
+        },
       },
       {
         accessorKey: "fecha",
         header: "Fecha",
         cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+        meta: {
+          filterVariant: 'date',
+        },
+        filterFn: 'dateRange',
       },
       {
         accessorKey: "metodo_pago",
         header: "Método de Pago",
         cell: (info) => PAYMENT_METHOD_LABELS[String(info.getValue())] || String(info.getValue()),
+        meta: {
+          filterVariant: 'select',
+          selectOptions: [
+            { value: 'cash', label: 'Efectivo' },
+            { value: 'transfer', label: 'Transferencia' },
+            { value: 'credit_card', label: 'Tarjeta de Crédito' },
+            { value: 'debit_card', label: 'Tarjeta de Débito' },
+          ],
+        },
       },
       {
         accessorKey: "descripcion",
@@ -245,6 +269,10 @@ function Pagos() {
         accessorKey: "monto",
         header: "Monto ($)",
         cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+        meta: {
+          filterVariant: 'number',
+        },
+        filterFn: 'numberCompare',
       },
       {
         id: "acciones",
