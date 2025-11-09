@@ -1,11 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import DataTable from "../components/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
 import { Apartment } from "../types/apartment";
 import { Building } from "../types/building";
 import { API_BASE_URL } from "../config";
+
+// Extend table module for custom filter functions
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    dateRange: FilterFn<unknown>;
+    numberCompare: FilterFn<unknown>;
+  }
+}
 
 interface BillingStatement {
   id: number;
@@ -35,11 +43,11 @@ const PAYMENT_STATUS_LABELS: { [key: string]: string } = {
 };
 
 const PAYMENT_STATUS_COLORS: { [key: string]: string } = {
-  pending: "#FFA500",
-  partial: "#FFD700",
-  paid: "#28a745",
+  pending: "#4d3e2eff",
+  partial: "#dc3545",
+  paid: "#007bff",
   overdue: "#dc3545",
-  credit: "#17a2b8",
+  credit: "#007bff",
 };
 
 function Expensas() {
@@ -247,6 +255,9 @@ function Expensas() {
         accessorKey: "apartment_unit_number",
         header: "Depto",
         size: 80,
+        meta: {
+          filterVariant: 'text',
+        },
       },
       {
         id: "nombre",
@@ -282,6 +293,10 @@ function Expensas() {
         accessorKey: "total_amount",
         header: "Total",
         cell: (info) => <strong>${Number(info.getValue()).toFixed(2)}</strong>,
+        meta: {
+          filterVariant: 'number',
+        },
+        filterFn: 'numberCompare',
       },
       {
         accessorKey: "paid_amount",
@@ -294,7 +309,7 @@ function Expensas() {
         cell: (info) => {
           const value = Number(info.getValue());
           return (
-            <span style={{ color: value < 0 ? "green" : value > 0 ? "red" : "black" }}>
+            <span style={{ color: value < 0 ? PAYMENT_STATUS_COLORS["credit"] : value > 0 ? "red" : "black" }}>
               ${value.toFixed(2)}
             </span>
           );
@@ -309,7 +324,8 @@ function Expensas() {
             <span
               style={{
                 padding: "4px 8px",
-                borderRadius: "4px",
+                width: "100%",
+                borderRadius: "20px",
                 backgroundColor: PAYMENT_STATUS_COLORS[status] || "#999",
                 color: "white",
                 fontSize: "12px",
@@ -320,17 +336,33 @@ function Expensas() {
             </span>
           );
         },
+        meta: {
+          filterVariant: 'select',
+          selectOptions: [
+            { value: 'pending', label: 'Pendiente' },
+            { value: 'partial', label: 'Parcial' },
+            { value: 'paid', label: 'Pagado' },
+            { value: 'overdue', label: 'Vencido' },
+            { value: 'credit', label: 'Crédito' },
+          ],
+        },
       },
       {
         accessorKey: "due_date",
         header: "Vencimiento",
         cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+        meta: {
+          filterVariant: 'date',
+        },
+        filterFn: 'dateRange',
       },
       {
         id: "acciones",
         header: "Acciones",
         cell: ({ row }) => (
-          <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+          <button className="btn-fancy"
+            style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
+            onClick={() => handleDelete(row.original.id)}>
             Eliminar
           </button>
         ),
@@ -347,22 +379,36 @@ function Expensas() {
         <h2>Gestión de Expensas</h2>
         
         {/* Controles superiores */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {/* Selector de Edificio */}
-            <div>
-              <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
-                Edificio:
-              </label>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+            gap: "20px",
+            flexWrap: "wrap",
+          }}
+        >
+          {/* Grupo de selects */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "15px",
+              flexWrap: "wrap",
+            }}
+          >
+            {/* Edificio */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label htmlFor="building-select" style={{ fontWeight: "bold" }}>Edificio:</label>
               <select
                 id="building-select"
                 value={selectedBuildingId || ""}
                 onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
+                className="search-input"
+                style={{ maxWidth: "200px" }}
               >
-                <option value="" disabled>
-                  Seleccione un edificio
-                </option>
+                <option value="" disabled>Seleccione un edificio</option>
                 {buildings.map((building) => (
                   <option key={building.id} value={building.id}>
                     {building.address}
@@ -371,13 +417,13 @@ function Expensas() {
               </select>
             </div>
 
-            {/* Selector de Período */}
-            <div>
-              <label style={{ marginRight: "10px", fontWeight: "bold" }}>Período:</label>
+            {/* Período */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label style={{ fontWeight: "bold" }}>Período:</label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", marginRight: "5px", borderRadius: '6px' }}
+                className="search-input"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                   <option key={month} value={month}>
@@ -389,17 +435,18 @@ function Expensas() {
                 type="number"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", width: "100px", borderRadius: '6px' }}
+                className="search-input"
                 min="2000"
                 max="2100"
+                style={{ width: "100px" }}
               />
             </div>
           </div>
 
-          {/* Botones de acción */}
+          {/* Botones */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
-              className="add-btn"
+              className="btn-fancy"
               onClick={() => handleCalculate(false)}
               disabled={calculating}
               style={{ opacity: calculating ? 0.6 : 1 }}
@@ -407,23 +454,24 @@ function Expensas() {
               {calculating ? "Calculando..." : "Calcular Expensas"}
             </button>
             <button
-              className="add-btn"
+              className="btn-fancy"
+              style={{ opacity: reconciling ? 0.6 : 1 }}
               onClick={() => handleCalculate(true)}
               disabled={calculating}
-              style={{ opacity: calculating ? 0.6 : 1 }}
             >
               Recalcular
             </button>
             <button
-              className="add-btn"
+              className="btn-fancy"
+              style={{ opacity: reconciling ? 0.6 : 1 }}
               onClick={handleReconcile}
               disabled={reconciling}
-              style={{ opacity: reconciling ? 0.6 : 1 }}
             >
               {reconciling ? "Reconciliando..." : "Reconciliar Pagos"}
             </button>
           </div>
         </div>
+
 
         {/* Tabla de expensas */}
         {billingStatements.length === 0 && !loading ? (

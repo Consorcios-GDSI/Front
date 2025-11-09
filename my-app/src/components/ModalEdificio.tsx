@@ -49,7 +49,7 @@ function ModalEdificio({ onSave, onClose, initialData }: ModalProps) {
         <span className="close-btn" onClick={onClose}>
           &times;
         </span>
-        <h2>{isNew ? "Añadir Edificio" : "Editar Dirección"}</h2>
+        <h2 style={{textAlign: "center"}}>{isNew ? "Añadir Edificio" : "Editar Dirección"}</h2>
         <input
           className={inputClass("address")}
           value={address}

@@ -18,6 +18,7 @@ function Departamentos() {
   const { id } = useParams();
   const buildingId = Number(id);
   const [departamentos, setDepartamentos] = useState<Apartment[]>([]);
+  const [buildingAddress, setBuildingAddress] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -38,8 +39,23 @@ function Departamentos() {
     }
   };
 
+  const fetchBuilding = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/buildings`);
+      if (!res.ok) throw new Error("Error al obtener edificio");
+      const buildings = await res.json();
+      const building = buildings.find((b: any) => b.id === buildingId);
+      if (building) {
+        setBuildingAddress(building.address);
+      }
+    } catch (err) {
+      console.error("Error al obtener edificio:", err);
+    }
+  };
+
   useEffect(() => {
     fetchDepartamentos();
+    fetchBuilding();
   }, [buildingId]);
 
   const handleSave = async (nuevo: DepartamentoForm) => {
@@ -57,7 +73,7 @@ function Departamentos() {
       success("Departamento creado exitosamente");
       setShowModal(false);
     } catch (err) {
-      console.error(err);
+      console.error("Error al crear departamento:", err);
       showError(err instanceof Error ? err.message : "No se pudo crear el departamento");
     }
   };
@@ -78,7 +94,7 @@ function Departamentos() {
       await fetchDepartamentos();
       success("Departamento eliminado exitosamente");
     } catch (err) {
-      console.error(err);
+      console.error("Error al eliminar departamento:", err);
       showError(err instanceof Error ? err.message : "No se pudo eliminar el departamento");
     }
   };
@@ -99,7 +115,7 @@ function Departamentos() {
       await fetchDepartamentos();
       success("Residente desasignado exitosamente");
     } catch (err) {
-      console.error(err);
+      console.error("Error al desasignar residente:", err);
       showError(err instanceof Error ? err.message : "No se pudo desasignar el residente");
     }
   };
@@ -126,7 +142,7 @@ function Departamentos() {
           <div style={{ display: "flex", gap: "10px" }}>
             {row.original.resident_dni && (
               <button 
-                className="edit-btn" 
+                className="btn-fancy"
                 onClick={() => handleUnassignResident(row.original.unit_number, row.original.apartment_name)}
                 title="Desasignar residente"
               >
@@ -134,7 +150,8 @@ function Departamentos() {
               </button>
             )}
             <button
-              className="delete-btn"
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
               onClick={() => handleDelete(row.original.unit_number, row.original.apartment_name)}
             >
               Eliminar
@@ -151,7 +168,7 @@ function Departamentos() {
     <main className="main-container">
       <ToastContainer />
       <div className="table-container">
-        <h2>Departamentos del Edificio {buildingId}</h2>
+        <h2>Departamentos de {buildingAddress || buildingId}</h2>
         {loading ? (
           <p style={{ textAlign: "center" }}>Cargando...</p>
         ) : error ? (
@@ -164,7 +181,7 @@ function Departamentos() {
           />
         )}
         <button
-          className="add-btn"
+          className="btn-fancy"
           onClick={() => setShowModal(true)}
         >
           Añadir Departamento

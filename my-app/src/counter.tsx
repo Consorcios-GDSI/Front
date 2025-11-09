@@ -1,7 +1,7 @@
-import HeaderComponent from "./components/Header"; // mayúscula H
+import HeaderComponent from "./components/Header";
 import AppRoutes from "./routes/AppRoutes";
 
-function Counter() {
+function App() {
   return (
     <>
       <HeaderComponent />
@@ -10,4 +10,4 @@ function Counter() {
   );
 }
 
-export default Counter;
+export default App;

@@ -131,7 +131,7 @@ function Propietarios() {
           setIsAddingApartment(false);
           setEditingPropietario(null);
         } catch (e) {
-          console.error(e);
+          console.error("Error al agregar departamento:", e);
           error(e instanceof Error ? e.message : "No se pudo agregar el departamento");
         }
         return;
@@ -179,7 +179,7 @@ function Propietarios() {
           setEditingPropietario(null);
           setCurrentApartments([]);
         } catch (e) {
-          console.error(e);
+          console.error("Error al actualizar propietario:", e);
           error(e instanceof Error ? e.message : "No se pudo actualizar");
         }
       } else {
@@ -203,7 +203,7 @@ function Propietarios() {
           success("Propietario creado exitosamente");
           setShowModal(false);
         } catch (e) {
-          console.error(String(e));
+          console.error("Error al crear propietario:", e);
           error(e instanceof Error ? e.message : "No se pudo crear");
         }
       }
@@ -226,7 +226,7 @@ function Propietarios() {
       await fetchData();
       success("Propietario eliminado exitosamente");
     } catch (err) {
-      console.error(err);
+      console.error("Error al eliminar propietario:", err);
       error(err instanceof Error ? err.message : "No se pudo eliminar el propietario");
     }
   };
@@ -254,7 +254,7 @@ function Propietarios() {
       setIsAddingApartment(false);
       setShowModal(true);
     } catch (err) {
-      console.error(err);
+      console.error("Error al cargar departamentos del residente:", err);
       error("Error al cargar los departamentos del residente");
     }
   };
@@ -287,21 +287,25 @@ function Propietarios() {
       },
       {
         id: "edicion",
-        header: "Edición",
+        header: "Acciones",
         cell: ({ row }) => (
           <div style={{ display: "flex", gap: "10px" }}>
-            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
-              Editar
+            <button               
+              className="btn-fancy"
+              onClick={() => handleEdit(row.original)}>
+                Editar
             </button>
             <button 
-              className="add-apartment-btn" 
+              className="btn-fancy"
               onClick={() => handleAddApartment(row.original)}
-              style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
             >
-              + Depto
+                + Depto
             </button>
-            <button className="delete-btn" onClick={() => handleDelete(row.original.dni, row.original.name)}>
-              Eliminar
+            <button 
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
+              onClick={() => handleDelete(row.original.dni, row.original.name)}>
+                Eliminar
             </button>
           </div>
         ),
@@ -323,7 +327,7 @@ function Propietarios() {
           emptyMessage="No hay propietarios registrados"
         />
         <button
-          className="add-btn"
+          className="btn-fancy"
           onClick={() => {
             setEditingPropietario(null);
             setCurrentApartments([]);

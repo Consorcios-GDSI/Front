@@ -61,7 +61,6 @@ function ModalGasto({ onSave, onClose, initialData, availableDeptos }: ModalProp
 
   const handleSubmit = () => {
     if (!validate()){
-      console.log("Validation failed", errors);
       return;
     }
     onSave({ depto, tipo, monto: Number(monto), fecha, descripcion }); 
@@ -75,7 +74,7 @@ function ModalGasto({ onSave, onClose, initialData, availableDeptos }: ModalProp
         <span className="close-btn" onClick={onClose}>
           &times;
         </span>
-        <h2>{isNew ? "Añadir Gasto" : "Editar Gasto"}</h2>
+        <h2 style={{"textAlign": "center"}}>{isNew ? "Añadir Gasto" : "Editar Gasto"}</h2>
 
         {/* Campo de Departamento ahora es un SELECT */}
         <select className={inputClass("depto")} value={depto} onChange={(e) => setDepto(e.target.value)}>

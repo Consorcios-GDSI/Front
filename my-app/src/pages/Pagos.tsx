@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import ModalPago from "../components/ModalPago";
 import DataTable from "../components/DataTable";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
 import { Apartment } from "../types/apartment";
 import { Building } from "../types/building";
 import { API_BASE_URL } from "../config";
+
+// Extend table module for custom filter functions
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    dateRange: FilterFn<unknown>;
+    numberCompare: FilterFn<unknown>;
+  }
+}
 
 interface Pago {
   id: number;
@@ -135,8 +143,6 @@ function Pagos() {
         payment_date: nuevo.fecha,
       };
 
-      console.log("Guardando pago con datos:", paymentData);
-
       if (editingPago) {
         // Actualizar pago existente
         const response = await fetch(`${API_BASE_URL}/payments/${editingPago.id}`, {
@@ -220,21 +226,32 @@ function Pagos() {
         accessorKey: "depto",
         header: "Nro Departamento",
         size: 120,
+        meta: {
+          filterVariant: 'text',
+        },
       },
       {
         accessorKey: "fecha",
         header: "Fecha",
         cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
-      },
-      {
-        accessorKey: "monto",
-        header: "Monto ($)",
-        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+        meta: {
+          filterVariant: 'date',
+        },
+        filterFn: 'dateRange',
       },
       {
         accessorKey: "metodo_pago",
         header: "Método de Pago",
         cell: (info) => PAYMENT_METHOD_LABELS[String(info.getValue())] || String(info.getValue()),
+        meta: {
+          filterVariant: 'select',
+          selectOptions: [
+            { value: 'cash', label: 'Efectivo' },
+            { value: 'transfer', label: 'Transferencia' },
+            { value: 'credit_card', label: 'Tarjeta de Crédito' },
+            { value: 'debit_card', label: 'Tarjeta de Débito' },
+          ],
+        },
       },
       {
         accessorKey: "descripcion",
@@ -247,14 +264,27 @@ function Pagos() {
         cell: (info) => String(info.getValue() || "-"),
       },
       {
+        accessorKey: "monto",
+        header: "Monto ($)",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+        meta: {
+          filterVariant: 'number',
+        },
+        filterFn: 'numberCompare',
+      },
+      {
         id: "acciones",
         header: "Acciones",
         cell: ({ row }) => (
-          <div className="action-buttons">
-            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button className="btn-fancy" onClick={() => handleEdit(row.original)}>
               Editar
             </button>
-            <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+            <button
+              className="btn-fancy"
+              style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
+              onClick={() => handleDelete(row.original.id)}
+            >
               Eliminar
             </button>
           </div>
@@ -272,15 +302,15 @@ function Pagos() {
         <h2>Gestión de Pagos</h2>
         
         {/* Dropdown de edificios */}
-        <div className="search-container" style={{ marginBottom: "20px" }}>
+        <div className="search-container" style={{ marginBottom: "20px", display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
-            Seleccionar Edificio:
+            Edificio:
           </label>
           <select
             id="building-select"
             value={selectedBuildingId || ""}
             onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-            style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
+            className="search-input"
           >
             <option value="" disabled>
               Seleccione un edificio
@@ -302,8 +332,7 @@ function Pagos() {
 
         {/* Botón de añadir pago debajo de la tabla */}
         <button
-          className="add-btn"
-          style={{ marginTop: "20px" }}
+          className="btn-fancy"   
           onClick={() => {
             setShowModal(true);
             setEditingPago(null);

@@ -6,8 +6,8 @@ function Home() {
   return (
     <main className="main-container" style={{ flexDirection: "column" }}>
       <div style={{ width: "100%", textAlign: "center", marginBottom: "30px" }}>
-        <h1 style={{ color: "#007bff", marginBottom: "10px" }}>Sistema de Gestión de Consorcios</h1>
-        <p style={{ color: "#666", fontSize: "16px" }}>Seleccione una opción para comenzar</p>
+        <h1 className="home-title">Sistema de Gestión de Consorcios</h1>
+        <p className="home-subtitle">Seleccione una opción para comenzar</p>
       </div>
       <div className="options-container" style={{ width: "100%", textAlign: "center", marginBottom: "30px" }}>
         <div className="option-card" onClick={() => navigate("/edificios")}> {/* <-- Nueva tarjeta */}
