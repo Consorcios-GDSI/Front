@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config";
 
 // Nueva forma: se elimina 'apellido' y se agrega 'dni'
 interface PropietarioForm {
@@ -40,8 +41,6 @@ interface ModalProps {
   currentApartments?: CurrentApartment[]; // Departamentos actuales del residente (solo para edición)
   isAddingApartment?: boolean; // Indica si se está agregando un departamento a un propietario existente
 }
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 function Modal({ onSave, onClose, initialData, isNew = true, buildings, currentApartments = [], isAddingApartment = false }: ModalProps) {
   const [nombre, setNombre] = useState("");
