@@ -132,8 +132,6 @@ function Gastos() {
         expense_date: nuevo.fecha
       };
 
-      console.log("Guardando gasto con datos:", expenseData);
-
       if (editingGasto) {
         // Actualizar gasto existente
         const response = await fetch(`${API_BASE_URL}/expenses/${editingGasto.id}`, {

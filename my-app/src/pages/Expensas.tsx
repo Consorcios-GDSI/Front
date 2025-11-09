@@ -226,7 +226,6 @@ function Expensas() {
     }
 
     try {
-      console.log('Before delete - Month:', selectedMonth, 'Year:', selectedYear);
       const response = await fetch(`${API_BASE_URL}/billing-statements/${id}`, {
         method: "DELETE",
       });
@@ -236,9 +235,7 @@ function Expensas() {
         throw new Error(errorMessage);
       }
 
-      console.log('After delete - Month:', selectedMonth, 'Year:', selectedYear);
       await loadBillingStatements();
-      console.log('After reload - Month:', selectedMonth, 'Year:', selectedYear);
       success("Expensa eliminada exitosamente");
     } catch (error) {
       console.error("Error eliminando expensa:", error);

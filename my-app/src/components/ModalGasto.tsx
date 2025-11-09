@@ -61,7 +61,6 @@ function ModalGasto({ onSave, onClose, initialData, availableDeptos }: ModalProp
 
   const handleSubmit = () => {
     if (!validate()){
-      console.log("Validation failed", errors);
       return;
     }
     onSave({ depto, tipo, monto: Number(monto), fecha, descripcion }); 

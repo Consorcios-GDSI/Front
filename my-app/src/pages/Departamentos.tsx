@@ -73,7 +73,7 @@ function Departamentos() {
       success("Departamento creado exitosamente");
       setShowModal(false);
     } catch (err) {
-      console.error(err);
+      console.error("Error al crear departamento:", err);
       showError(err instanceof Error ? err.message : "No se pudo crear el departamento");
     }
   };
@@ -94,7 +94,7 @@ function Departamentos() {
       await fetchDepartamentos();
       success("Departamento eliminado exitosamente");
     } catch (err) {
-      console.error(err);
+      console.error("Error al eliminar departamento:", err);
       showError(err instanceof Error ? err.message : "No se pudo eliminar el departamento");
     }
   };
@@ -115,7 +115,7 @@ function Departamentos() {
       await fetchDepartamentos();
       success("Residente desasignado exitosamente");
     } catch (err) {
-      console.error(err);
+      console.error("Error al desasignar residente:", err);
       showError(err instanceof Error ? err.message : "No se pudo desasignar el residente");
     }
   };

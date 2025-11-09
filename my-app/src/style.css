@@ -35,13 +35,6 @@ textarea {
     margin: 0;
 }
 
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: bold;
-}
-
 /* Menú horizontal en header */
 .header-menu {
   display: flex;
@@ -281,19 +274,6 @@ th {
 
 .save-btn:hover {
     background-color: #0056b3;
-}
-
-.delete-btn {
-    background-color: #dc3545;
-    border: none;
-    padding: 6px 12px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    color: white;
-}
-
-.delete-btn:hover {
-    background-color: #c82333;
 }
 
 .error-input {

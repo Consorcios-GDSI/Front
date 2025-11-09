@@ -143,8 +143,6 @@ function Pagos() {
         payment_date: nuevo.fecha,
       };
 
-      console.log("Guardando pago con datos:", paymentData);
-
       if (editingPago) {
         // Actualizar pago existente
         const response = await fetch(`${API_BASE_URL}/payments/${editingPago.id}`, {

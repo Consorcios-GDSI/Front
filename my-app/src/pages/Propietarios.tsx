@@ -131,7 +131,7 @@ function Propietarios() {
           setIsAddingApartment(false);
           setEditingPropietario(null);
         } catch (e) {
-          console.error(e);
+          console.error("Error al agregar departamento:", e);
           error(e instanceof Error ? e.message : "No se pudo agregar el departamento");
         }
         return;
@@ -179,7 +179,7 @@ function Propietarios() {
           setEditingPropietario(null);
           setCurrentApartments([]);
         } catch (e) {
-          console.error(e);
+          console.error("Error al actualizar propietario:", e);
           error(e instanceof Error ? e.message : "No se pudo actualizar");
         }
       } else {
@@ -203,7 +203,7 @@ function Propietarios() {
           success("Propietario creado exitosamente");
           setShowModal(false);
         } catch (e) {
-          console.error(String(e));
+          console.error("Error al crear propietario:", e);
           error(e instanceof Error ? e.message : "No se pudo crear");
         }
       }
@@ -226,7 +226,7 @@ function Propietarios() {
       await fetchData();
       success("Propietario eliminado exitosamente");
     } catch (err) {
-      console.error(err);
+      console.error("Error al eliminar propietario:", err);
       error(err instanceof Error ? err.message : "No se pudo eliminar el propietario");
     }
   };
@@ -254,7 +254,7 @@ function Propietarios() {
       setIsAddingApartment(false);
       setShowModal(true);
     } catch (err) {
-      console.error(err);
+      console.error("Error al cargar departamentos del residente:", err);
       error("Error al cargar los departamentos del residente");
     }
   };
