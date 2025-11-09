@@ -233,7 +233,7 @@ function Pagos() {
       {
         accessorKey: "fecha",
         header: "Fecha",
-        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES", { timeZone: "UTC" }),
         meta: {
           filterVariant: 'date',
         },

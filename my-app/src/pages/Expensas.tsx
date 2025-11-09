@@ -350,7 +350,7 @@ function Expensas() {
       {
         accessorKey: "due_date",
         header: "Vencimiento",
-        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES", { timeZone: "UTC" }),
         meta: {
           filterVariant: 'date',
         },
