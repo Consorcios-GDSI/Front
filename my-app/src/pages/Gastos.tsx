@@ -1,5 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ModalGasto from "../components/ModalGasto";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
+import { Apartment } from "../types/apartment";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 interface Gasto {
   id: number;
@@ -11,20 +18,6 @@ interface Gasto {
   building_id: number;
 }
 
-interface Apartment {
-  apartment_name: string;
-  unit_number: number;
-  building_id: number;
-  resident_dni: number | null;
-}
-
-interface Building {
-  id: number;
-  address: string;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
-
 function Gastos() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -33,6 +26,7 @@ function Gastos() {
   const [showModal, setShowModal] = useState(false);
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [loading, setLoading] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   // Cargar datos iniciales desde el backend
   useEffect(() => {
@@ -40,7 +34,6 @@ function Gastos() {
     loadApartments();
   }, []);
 
-  // Cargar gastos cuando cambia el edificio seleccionado
   useEffect(() => {
     if (selectedBuildingId) {
       loadApartments();
@@ -61,7 +54,7 @@ function Gastos() {
       }
     } catch (error) {
       console.error("Error cargando edificios:", error);
-      alert("Error al cargar los edificios");
+      showError("Error al cargar los edificios");
     }
   };
 
@@ -88,7 +81,7 @@ function Gastos() {
       setGastos(gastosTransformados);
     } catch (error) {
       console.error("Error cargando gastos:", error);
-      alert("Error al cargar los gastos");
+      showError("Error al cargar los gastos");
     } finally {
       setLoading(false);
     }
@@ -99,6 +92,9 @@ function Gastos() {
       const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
       if (!response.ok) throw new Error("Error al cargar departamentos");
       const data = await response.json();
+      if (Array.isArray(data)) {
+          data.sort((a: Apartment, b: Apartment) => (a.unit_number ?? 0) - (b.unit_number ?? 0));
+        }
       setApartments(data);
       
       // Seleccionar el primer building_id disponible
@@ -107,13 +103,14 @@ function Gastos() {
       }
     } catch (error) {
       console.error("Error cargando departamentos:", error);
+      showError("Error al cargar departamentos");
     }
   };
 
   const handleSave = async (nuevo: Omit<Gasto, "id" | "building_id">) => {
     try {
       if (!selectedBuildingId) {
-        alert("No hay un edificio seleccionado");
+        showError("No hay un edificio seleccionado");
         return;
       }
 
@@ -137,9 +134,13 @@ function Gastos() {
           body: JSON.stringify(expenseData)
         });
 
-        if (!response.ok) throw new Error("Error al actualizar gasto");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         
         await loadGastos(); // Recargar la lista
+        success("Gasto actualizado exitosamente");
         setEditingGasto(null);
       } else {
         // Crear nuevo gasto
@@ -149,15 +150,19 @@ function Gastos() {
           body: JSON.stringify(expenseData)
         });
 
-        if (!response.ok) throw new Error("Error al crear gasto");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         
         await loadGastos(); // Recargar la lista
+        success("Gasto creado exitosamente");
       }
       
       setShowModal(false);
     } catch (error) {
       console.error("Error guardando gasto:", error);
-      alert("Error al guardar el gasto");
+      showError(error instanceof Error ? error.message : "Error al guardar el gasto");
     }
   };
 
@@ -171,12 +176,16 @@ function Gastos() {
         method: "DELETE"
       });
 
-      if (!response.ok) throw new Error("Error al eliminar gasto");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       
       await loadGastos(); // Recargar la lista
+      success("Gasto eliminado exitosamente");
     } catch (error) {
       console.error("Error eliminando gasto:", error);
-      alert("Error al eliminar el gasto");
+      showError(error instanceof Error ? error.message : "Error al eliminar el gasto");
     }
   };
 
@@ -197,11 +206,58 @@ function Gastos() {
     }))
   ];
 
+  const columns = useMemo<ColumnDef<Gasto>[]>(
+    () => [
+      {
+        accessorKey: "depto",
+        header: "Nro Departamento",
+        size: 120,
+      },
+      {
+        accessorKey: "tipo",
+        header: "Tipo",
+      },
+      {
+        accessorKey: "monto",
+        header: "Monto ($)",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "fecha",
+        header: "Fecha",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
+        accessorKey: "descripcion",
+        header: "Descripción",
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="action-buttons">
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
+        <h2>Gestión de Gastos</h2>
+        
         {/* Dropdown de edificios */}
-        <div className="search-container">
+        <div className="search-container" style={{ marginBottom: "20px" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
             Seleccionar Edificio:
           </label>
@@ -209,7 +265,7 @@ function Gastos() {
             id="building-select"
             value={selectedBuildingId || ""}
             onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-            style={{ padding: "8px", fontSize: "14px" }}
+            style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
           >
             <option value="" disabled>Seleccione un edificio</option>
             {buildings.map(building => (
@@ -220,39 +276,12 @@ function Gastos() {
           </select>
         </div>
 
-        {loading ? (
-          <p>Cargando gastos...</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nro Departamento</th>
-                <th>Tipo</th>
-                <th>Monto ($)</th>
-                <th>Fecha de origen</th>
-                <th>Descripción</th>
-                <th>Edición</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gastos.map(g => (
-                <tr key={g.id}>
-                  <td>{g.depto}</td>
-                  <td>{g.tipo}</td>
-                  <td>${g.monto}</td>
-                  <td>{g.fecha}</td>
-                  <td>{g.descripcion}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button className="edit-btn" onClick={() => handleEdit(g)}>Editar</button>
-                      <button className="delete-btn" onClick={() => handleDelete(g.id)}>Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          data={gastos}
+          columns={columns}
+          loading={loading}
+          emptyMessage="No hay gastos registrados para este edificio"
+        />
 
         {/* Botón de añadir gasto debajo de la tabla */}
         <button className="add-btn" style={{ marginTop: "20px" }} onClick={() => { setShowModal(true); setEditingGasto(null); }}>

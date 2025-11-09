@@ -1,5 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ModalPago from "../components/ModalPago";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
+import { Apartment } from "../types/apartment";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 interface Pago {
   id: number;
@@ -11,20 +18,6 @@ interface Pago {
   numero_referencia: string;
   building_id: number;
 }
-
-interface Apartment {
-  apartment_name: string;
-  unit_number: number;
-  building_id: number;
-  resident_dni: number | null;
-}
-
-interface Building {
-  id: number;
-  address: string;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 const PAYMENT_METHOD_LABELS: { [key: string]: string } = {
   cash: "Efectivo",
@@ -41,6 +34,7 @@ function Pagos() {
   const [showModal, setShowModal] = useState(false);
   const [editingPago, setEditingPago] = useState<Pago | null>(null);
   const [loading, setLoading] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   // Cargar datos iniciales desde el backend
   useEffect(() => {
@@ -48,7 +42,6 @@ function Pagos() {
     loadApartments();
   }, []);
 
-  // Cargar pagos cuando cambia el edificio seleccionado
   useEffect(() => {
     if (selectedBuildingId) {
       loadApartments();
@@ -69,7 +62,7 @@ function Pagos() {
       }
     } catch (error) {
       console.error("Error cargando edificios:", error);
-      alert("Error al cargar los edificios");
+      showError("Error al cargar los edificios");
     }
   };
 
@@ -97,7 +90,7 @@ function Pagos() {
       setPagos(pagosTransformados);
     } catch (error) {
       console.error("Error cargando pagos:", error);
-      alert("Error al cargar los pagos");
+      showError("Error al cargar los pagos");
     } finally {
       setLoading(false);
     }
@@ -108,6 +101,10 @@ function Pagos() {
       const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
       if (!response.ok) throw new Error("Error al cargar departamentos");
       const data = await response.json();
+      // Ordenar departamentos por unit_number ascendente antes de guardarlos en estado
+      if (Array.isArray(data)) {
+        data.sort((a: Apartment, b: Apartment) => (a.unit_number ?? 0) - (b.unit_number ?? 0));
+      }
       setApartments(data);
 
       // Seleccionar el primer building_id disponible
@@ -116,13 +113,14 @@ function Pagos() {
       }
     } catch (error) {
       console.error("Error cargando departamentos:", error);
+      showError("Error al cargar departamentos");
     }
   };
 
   const handleSave = async (nuevo: Omit<Pago, "id" | "building_id">) => {
     try {
       if (!selectedBuildingId) {
-        alert("No hay un edificio seleccionado");
+        showError("No hay un edificio seleccionado");
         return;
       }
 
@@ -147,9 +145,13 @@ function Pagos() {
           body: JSON.stringify(paymentData),
         });
 
-        if (!response.ok) throw new Error("Error al actualizar pago");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
 
         await loadPagos(); // Recargar la lista
+        success("Pago actualizado exitosamente");
         setEditingPago(null);
       } else {
         // Crear nuevo pago
@@ -159,15 +161,19 @@ function Pagos() {
           body: JSON.stringify(paymentData),
         });
 
-        if (!response.ok) throw new Error("Error al crear pago");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
 
         await loadPagos(); // Recargar la lista
+        success("Pago creado exitosamente");
       }
 
       setShowModal(false);
     } catch (error) {
       console.error("Error guardando pago:", error);
-      alert("Error al guardar el pago");
+      showError(error instanceof Error ? error.message : "Error al guardar el pago");
     }
   };
 
@@ -181,12 +187,16 @@ function Pagos() {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Error al eliminar pago");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
 
       await loadPagos(); // Recargar la lista
+      success("Pago eliminado exitosamente");
     } catch (error) {
       console.error("Error eliminando pago:", error);
-      alert("Error al eliminar el pago");
+      showError(error instanceof Error ? error.message : "Error al eliminar el pago");
     }
   };
 
@@ -204,11 +214,65 @@ function Pagos() {
     label: `${a.unit_number} - ${a.apartment_name}`,
   }));
 
+  const columns = useMemo<ColumnDef<Pago>[]>(
+    () => [
+      {
+        accessorKey: "depto",
+        header: "Nro Departamento",
+        size: 120,
+      },
+      {
+        accessorKey: "fecha",
+        header: "Fecha",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
+        accessorKey: "monto",
+        header: "Monto ($)",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "metodo_pago",
+        header: "Método de Pago",
+        cell: (info) => PAYMENT_METHOD_LABELS[String(info.getValue())] || String(info.getValue()),
+      },
+      {
+        accessorKey: "descripcion",
+        header: "Descripción",
+        cell: (info) => String(info.getValue() || "-"),
+      },
+      {
+        accessorKey: "numero_referencia",
+        header: "Nro Referencia",
+        cell: (info) => String(info.getValue() || "-"),
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div className="action-buttons">
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
+        <h2>Gestión de Pagos</h2>
+        
         {/* Dropdown de edificios */}
-        <div className="search-container">
+        <div className="search-container" style={{ marginBottom: "20px" }}>
           <label htmlFor="building-select" style={{ marginRight: "10px", fontWeight: "bold" }}>
             Seleccionar Edificio:
           </label>
@@ -216,7 +280,7 @@ function Pagos() {
             id="building-select"
             value={selectedBuildingId || ""}
             onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-            style={{ padding: "8px", fontSize: "14px" }}
+            style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
           >
             <option value="" disabled>
               Seleccione un edificio
@@ -229,45 +293,12 @@ function Pagos() {
           </select>
         </div>
 
-        {loading ? (
-          <p>Cargando pagos...</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nro Departamento</th>
-                <th>Fecha</th>
-                <th>Monto ($)</th>
-                <th>Método de Pago</th>
-                <th>Descripción</th>
-                <th>Nro Referencia</th>
-                <th>Edición</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagos.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.depto}</td>
-                  <td>{p.fecha}</td>
-                  <td>${p.monto.toFixed(2)}</td>
-                  <td>{PAYMENT_METHOD_LABELS[p.metodo_pago] || p.metodo_pago}</td>
-                  <td>{p.descripcion || "-"}</td>
-                  <td>{p.numero_referencia || "-"}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button className="edit-btn" onClick={() => handleEdit(p)}>
-                        Editar
-                      </button>
-                      <button className="delete-btn" onClick={() => handleDelete(p.id)}>
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          data={pagos}
+          columns={columns}
+          loading={loading}
+          emptyMessage="No hay pagos registrados para este edificio"
+        />
 
         {/* Botón de añadir pago debajo de la tabla */}
         <button

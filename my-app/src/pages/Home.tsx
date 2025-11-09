@@ -4,8 +4,12 @@ function Home() {
   const navigate = useNavigate();
 
   return (
-    <main className="main-container">
-      <div className="options-container">
+    <main className="main-container" style={{ flexDirection: "column" }}>
+      <div style={{ width: "100%", textAlign: "center", marginBottom: "30px" }}>
+        <h1 style={{ color: "#007bff", marginBottom: "10px" }}>Sistema de Gestión de Consorcios</h1>
+        <p style={{ color: "#666", fontSize: "16px" }}>Seleccione una opción para comenzar</p>
+      </div>
+      <div className="options-container" style={{ width: "100%", textAlign: "center", marginBottom: "30px" }}>
         <div className="option-card" onClick={() => navigate("/edificios")}> {/* <-- Nueva tarjeta */}
           Gestión Edificios
         </div>
@@ -20,9 +24,6 @@ function Home() {
         </div>
         <div className="option-card" onClick={() => navigate("/pagos")}>
           Pagos
-        </div>
-        <div className="option-card" onClick={() => navigate("/reportes")}>
-          Reportes
         </div>
       </div>
     </main>

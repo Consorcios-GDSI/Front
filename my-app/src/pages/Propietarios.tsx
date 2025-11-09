@@ -1,6 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { ColumnDef } from "@tanstack/react-table";
 // Modal existente para alta/edición
-import PropietarioModal from "../components/Modal"; 
+import PropietarioModal from "../components/Modal";
+import DataTable from "../components/DataTable";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler"; 
+import { API_BASE_URL } from "../config";
 
 // Tipos, interfaces y datos simulados
 interface Department {
@@ -35,6 +40,7 @@ function Propietarios() {
   const [editingPropietario, setEditingPropietario] = useState<Propietario | null>(null);
   const [currentApartments, setCurrentApartments] = useState<any[]>([]);
   const [isAddingApartment, setIsAddingApartment] = useState(false); // Nuevo: para modal de agregar departamento
+  const { success, error, ToastContainer } = useToast();
 
   // Lista simple para el select del modal
   const buildingsList = edificios.map(e => ({ id: e.id, nombre: e.nombre }));
@@ -55,8 +61,8 @@ function Propietarios() {
   const fetchData = async () => {
     try {
       const [residentsRes, buildingsRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/residents"),
-        fetch("http://127.0.0.1:8000/buildings")
+        fetch(`${API_BASE_URL}/residents`),
+        fetch(`${API_BASE_URL}/buildings`)
       ]);
 
       const residentesData = await residentsRes.json();
@@ -74,12 +80,12 @@ function Propietarios() {
       setPropietarios(propietariosBackend);
       setEdificios(edificiosData.map((b: any) => ({
         id: b.id,
-        nombre: b.name || b.nombre || `Edificio ${b.id}`,
+        nombre: b.address || b.nombre || `Edificio ${b.id}`,
         departments: [],
       })));
     } catch (err) {
       console.error("Error cargando data:", err);
-      alert("Error al cargar edificios o residentes");
+      error("Error al cargar edificios o residentes");
     }
   };
 
@@ -89,115 +95,118 @@ function Propietarios() {
 
   // Alta / edición de propietario usando backend (nombre completo en name)
   const handleSave = async (nuevo: any) => {
-  const nombreCompleto: string = nuevo.nombre || nuevo.name || ""; // Modal envía 'nombre' (completo)
-  const dni = nuevo.dni;
-  const telephone = parseInt(nuevo.telefono, 10);
-  const mail = nuevo.mail;
-  const building_id = nuevo.building_id;
-  const unit_number = nuevo.depto ? parseInt(nuevo.depto, 10) : undefined;
+    const nombreCompleto: string = nuevo.nombre || nuevo.name || ""; // Modal envía 'nombre' (completo)
+    const dni = nuevo.dni;
+    const telephone = parseInt(nuevo.telefono, 10);
+    const mail = nuevo.mail;
+    const building_id = nuevo.building_id;
+    const unit_number = nuevo.depto ? parseInt(nuevo.depto, 10) : undefined;
 
-    // Caso: Agregar departamento a propietario existente
-    if (isAddingApartment && editingPropietario) {
-      try {
-        if (!building_id || !unit_number) {
-          alert("Seleccione edificio y departamento");
-          return;
+      // Caso: Agregar departamento a propietario existente
+      if (isAddingApartment && editingPropietario) {
+        try {
+          if (!building_id || !unit_number) {
+            error("Seleccione edificio y departamento");
+            return;
+          }
+          // Usar los datos del propietario existente
+          const createData = { 
+            dni: editingPropietario.dni, 
+            name: editingPropietario.name, 
+            telephone: parseInt(editingPropietario.telephone, 10), 
+            mail: editingPropietario.mail 
+          };
+          const res = await fetch(`${API_BASE_URL}/residents/${building_id}/${unit_number}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(createData),
+          });
+          if (!res.ok) {
+            const errorMessage = await handleAPIError(res);
+            throw new Error(errorMessage);
+          }
+          await fetchData();
+          success("Departamento agregado exitosamente");
+          setShowModal(false);
+          setIsAddingApartment(false);
+          setEditingPropietario(null);
+        } catch (e) {
+          console.error(e);
+          error(e instanceof Error ? e.message : "No se pudo agregar el departamento");
         }
-        // Usar los datos del propietario existente
-        const createData = { 
-          dni: editingPropietario.dni, 
-          name: editingPropietario.name, 
-          telephone: parseInt(editingPropietario.telephone, 10), 
-          mail: editingPropietario.mail 
-        };
-        const res = await fetch(`http://127.0.0.1:8000/residents/${building_id}/${unit_number}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(createData),
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.detail || "Error agregando departamento");
-        }
-        await fetchData();
-        setShowModal(false);
-        setIsAddingApartment(false);
-        setEditingPropietario(null);
-      } catch (e) {
-        console.error(e);
-        alert(e instanceof Error ? e.message : "No se pudo agregar el departamento");
+        return;
       }
-      return;
-    }
 
-    if (editingPropietario) {
-      // PUT /residents/{dni}
-      try {
-        // Usar los valores old_ que vienen del modal (seleccionados por el usuario)
-        const oldBuildingId = nuevo.old_building_id;
-        const oldUnitNumber = nuevo.old_depto ? parseInt(nuevo.old_depto, 10) : undefined;
-        
-        // Validar que tengamos los datos old_ necesarios
-        if (!oldBuildingId || !oldUnitNumber) {
-          alert("Debe seleccionar un departamento actual");
-          return;
+      if (editingPropietario) {
+        // PUT /residents/{dni}
+        try {
+          // Usar los valores old_ que vienen del modal (seleccionados por el usuario)
+          const oldBuildingId = nuevo.old_building_id;
+          const oldUnitNumber = nuevo.old_depto ? parseInt(nuevo.old_depto, 10) : undefined;
+          
+          // Validar que tengamos los datos old_ necesarios
+          if (!oldBuildingId || !oldUnitNumber) {
+            error("Debe seleccionar un departamento actual");
+            return;
+          }
+          
+          // Si building_id es 0 o no hay depto, enviar null para no modificar el departamento
+          const newBuildingId = (building_id && building_id !== 0 && unit_number) ? building_id : null;
+          const newUnitNumber = (building_id && building_id !== 0 && unit_number) ? unit_number : null;
+          
+          const updateData = {
+            dni: editingPropietario.dni,
+            name: nombreCompleto,
+            telephone,
+            mail,
+            old_building_id: oldBuildingId,
+            old_unit_number: oldUnitNumber,
+            new_building_id: newBuildingId,
+            new_unit_number: newUnitNumber,
+          };
+          const res = await fetch(`${API_BASE_URL}/residents/${editingPropietario.dni}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updateData),
+          });
+          if (!res.ok) {
+            const errorMessage = await handleAPIError(res);
+            throw new Error(errorMessage);
+          }
+          await fetchData();
+          success("Propietario actualizado exitosamente");
+          setShowModal(false);
+          setEditingPropietario(null);
+          setCurrentApartments([]);
+        } catch (e) {
+          console.error(e);
+          error(e instanceof Error ? e.message : "No se pudo actualizar");
         }
-        
-        // Si building_id es 0 o no hay depto, enviar null para no modificar el departamento
-        const newBuildingId = (building_id && building_id !== 0 && unit_number) ? building_id : null;
-        const newUnitNumber = (building_id && building_id !== 0 && unit_number) ? unit_number : null;
-        
-        const updateData = {
-          dni: editingPropietario.dni,
-          name: nombreCompleto,
-          telephone,
-          mail,
-          old_building_id: oldBuildingId,
-          old_unit_number: oldUnitNumber,
-          new_building_id: newBuildingId,
-          new_unit_number: newUnitNumber,
-        };
-        const res = await fetch(`http://127.0.0.1:8000/residents/${editingPropietario.dni}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updateData),
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.detail || "Error actualizando propietario");
+      } else {
+        // POST /residents/{building_id}/{unit_number}
+        try {
+          if (!building_id || !unit_number) {
+            error("Seleccione edificio y departamento");
+            return;
+          }
+          const createData = { dni, name: nombreCompleto, telephone, mail };
+          const res = await fetch(`${API_BASE_URL}/residents/${building_id}/${unit_number}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(createData),
+          });
+          if (!res.ok) {
+            const errorMessage = await handleAPIError(res);
+            throw new Error(errorMessage);
+          }
+          await fetchData();
+          success("Propietario creado exitosamente");
+          setShowModal(false);
+        } catch (e) {
+          console.error(String(e));
+          error(e instanceof Error ? e.message : "No se pudo crear");
         }
-        await fetchData();
-        setShowModal(false);
-        setEditingPropietario(null);
-        setCurrentApartments([]);
-      } catch (e) {
-        console.error(e);
-        alert(e instanceof Error ? e.message : "No se pudo actualizar");
       }
-    } else {
-      // POST /residents/{building_id}/{unit_number}
-      try {
-        if (!building_id || !unit_number) {
-          alert("Seleccione edificio y departamento");
-          return;
-        }
-        const createData = { dni, name: nombreCompleto, telephone, mail };
-        const res = await fetch(`http://127.0.0.1:8000/residents/${building_id}/${unit_number}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(createData),
-        });
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.detail || "Error creando propietario");
-        }
-        await fetchData();
-        setShowModal(false);
-      } catch (e) {
-        console.error(e);
-        alert(e instanceof Error ? e.message : "No se pudo crear");
-      }
-    }
   };
 
   const handleDelete = async (dni: number, name: string) => {
@@ -205,7 +214,7 @@ function Propietarios() {
     if (!window.confirm(`¿Está seguro que desea eliminar al propietario ${name}?`)) return;
     
     try {
-      const response = await fetch(`http://127.0.0.1:8000/residents/${dni}`, {
+      const response = await fetch(`${API_BASE_URL}/residents/${dni}`, {
         method: "DELETE",
       });
 
@@ -215,16 +224,17 @@ function Propietarios() {
       }
 
       await fetchData();
+      success("Propietario eliminado exitosamente");
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "No se pudo eliminar el propietario");
+      error(err instanceof Error ? err.message : "No se pudo eliminar el propietario");
     }
   };
 
   const handleEdit = async (p: Propietario) => {
     // Obtener los departamentos del residente antes de abrir el modal
     try {
-      const response = await fetch(`http://127.0.0.1:8000/apartments/dni/${p.dni}`);
+      const response = await fetch(`${API_BASE_URL}/apartments/dni/${p.dni}`);
       if (!response.ok) {
         throw new Error("Error obteniendo departamentos del residente");
       }
@@ -245,7 +255,7 @@ function Propietarios() {
       setShowModal(true);
     } catch (err) {
       console.error(err);
-      alert("Error al cargar los departamentos del residente");
+      error("Error al cargar los departamentos del residente");
     }
   };
 
@@ -257,47 +267,61 @@ function Propietarios() {
     setShowModal(true);
   };
 
+  const columns = useMemo<ColumnDef<Propietario>[]>(
+    () => [
+      {
+        accessorKey: "dni",
+        header: "DNI",
+      },
+      {
+        accessorKey: "name",
+        header: "Nombre",
+      },
+      {
+        accessorKey: "telephone",
+        header: "Teléfono",
+      },
+      {
+        accessorKey: "mail",
+        header: "Mail",
+      },
+      {
+        id: "edicion",
+        header: "Edición",
+        cell: ({ row }) => (
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button 
+              className="add-apartment-btn" 
+              onClick={() => handleAddApartment(row.original)}
+              style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              + Depto
+            </button>
+            <button className="delete-btn" onClick={() => handleDelete(row.original.dni, row.original.name)}>
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>DNI</th>
-              <th>Nombre</th>
-              <th>Teléfono</th>
-              <th>Mail</th>
-              <th>Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {propietarios.map((p) => (
-              <tr key={p.id}>
-                <td>{p.dni}</td>
-                <td>{p.name}</td>
-                <td>{p.telephone}</td>
-                <td>{p.mail}</td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button className="edit-btn" onClick={() => handleEdit(p)}>
-                      Editar
-                    </button>
-                    <button 
-                      className="add-apartment-btn" 
-                      onClick={() => handleAddApartment(p)}
-                      style={{ backgroundColor: '#28a745', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      + Depto
-                    </button>
-                    <button className="delete-btn" onClick={() => handleDelete(p.dni, p.name)}>
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h2>Gestión de Propietarios</h2>
+        
+        <DataTable
+          data={propietarios}
+          columns={columns}
+          emptyMessage="No hay propietarios registrados"
+        />
         <button
           className="add-btn"
           onClick={() => {

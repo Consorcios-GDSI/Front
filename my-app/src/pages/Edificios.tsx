@@ -1,71 +1,82 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useLocalStorage from "../hooks/useLocalStorage";
 import ModalEdificio from "../components/ModalEdificio";
 import { useNavigate } from "react-router-dom";
-
-interface Edificio {
-  id: number;
-  address: string;
-}
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 function Edificios() {
-  const [edificios, setEdificios] = useLocalStorage<Edificio[]>(
+  const [edificios, setEdificios] = useLocalStorage<Building[]>(
     "edificiosData",
     []
   );
 
   const [showModal, setShowModal] = useState(false);
-  const [editingEdificio, setEditingEdificio] = useState<Edificio | null>(null);
+  const [editingEdificio, setEditingEdificio] = useState<Building | null>(null);
   const navigate = useNavigate();
+  const { success, error, ToastContainer } = useToast();
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/buildings")
+    fetch(`${API_BASE_URL}/buildings`)
       .then((res) => res.json())
       .then((data) => {
         setEdificios(data);
       })
       .catch((err) => {
         console.error("Error al cargar edificios:", err);
+        error("Error al cargar los edificios");
       });
   }, []);
 
-  const handleSave = async (nuevo: Edificio) => {
+  const handleSave = async (nuevo: Building) => {
     if (editingEdificio) {
       // Editar dirección en el backend
       try {
-        const response = await fetch(`http://127.0.0.1:8000/buildings/${editingEdificio.id}`, {
+        const response = await fetch(`${API_BASE_URL}/buildings/${editingEdificio.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ address: nuevo.address }),
         });
-        if (!response.ok) throw new Error("Error actualizando dirección");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         // Actualizar en frontend
         setEdificios(
           edificios.map((e) => (e.id === editingEdificio.id ? { ...e, address: nuevo.address } : e))
         );
+        success("Edificio actualizado exitosamente");
       } catch (err) {
         console.error(err);
-        alert("No se pudo actualizar la dirección");
+        error(err instanceof Error ? err.message : "No se pudo actualizar la dirección");
       }
     } else {
       // Añadir edificio en el backend
       try {
-        const response = await fetch("http://127.0.0.1:8000/buildings", {
+        const response = await fetch(`${API_BASE_URL}/buildings`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ address: nuevo.address }),
         });
-        if (!response.ok) throw new Error("Error creando edificio");
+        if (!response.ok) {
+          const errorMessage = await handleAPIError(response);
+          throw new Error(errorMessage);
+        }
         // Vuelvo a pedir la lista actualizada al backend
-        const edificiosActualizados = await fetch("http://127.0.0.1:8000/buildings").then(res => res.json());
+        const edificiosActualizados = await fetch(`${API_BASE_URL}/buildings`).then(res => res.json());
         setEdificios(edificiosActualizados);
+        success("Edificio creado exitosamente");
       } catch (err) {
         console.error(err);
-        alert("No se pudo crear el edificio");
+        error(err instanceof Error ? err.message : "No se pudo crear el edificio");
       }
     }
     setShowModal(false);
@@ -75,64 +86,91 @@ function Edificios() {
   const handleDelete = async (id: number, address: string) => {
     if (!window.confirm(`¿Está seguro que desea eliminar el edificio en ${address}?`)) return;
     try {
-      const response = await fetch(`http://127.0.0.1:8000/buildings/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/buildings/${id}`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Error eliminando edificio");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       setEdificios(edificios.filter((e) => e.id !== id));
+      success("Edificio eliminado exitosamente");
     } catch (err) {
       console.error(err);
-      alert("No se pudo eliminar el edificio");
+      error(err instanceof Error ? err.message : "No se pudo eliminar el edificio");
     }
   };
 
-  const handleEdit = (e: Edificio) => {
+  const handleEdit = (e: Building) => {
     setEditingEdificio(e);
     setShowModal(true);
   };
 
+  const columns = useMemo<ColumnDef<Building>[]>(
+    () => [
+      {
+        accessorKey: "id",
+        header: "ID",
+        size: 80,
+      },
+      {
+        accessorKey: "address",
+        header: "Dirección",
+        cell: (info) => <strong>{String(info.getValue())}</strong>,
+      },
+      {
+        id: "departamentos",
+        header: "Departamentos",
+        cell: ({ row }) => (
+          <button
+            className="view-btn"
+            onClick={() => navigate(`/departamentos/${row.original.id}`)}
+          >
+            Ver Departamentos
+          </button>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div
+            className="action-buttons"
+            style={{ display: "flex", justifyContent: "flex-start", gap: "8px", alignItems: "left" }}
+          >
+            <button className="edit-btn" onClick={() => handleEdit(row.original)}>
+              Editar
+            </button>
+            <button
+              className="delete-btn"
+              onClick={() => handleDelete(row.original.id, row.original.address)}
+            >
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    [navigate]
+  );
+
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Gestión de Edificios</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Dirección</th>
-              <th>Departamentos</th>
-              <th>Edición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {edificios.map((e) => (
-              <tr key={e.id}>
-                <td>{e.id}</td>
-                <td>{e.address}</td>
-                <td>
-                  <button
-                    style={{ background: "#2ecc40", color: "white", border: "none", padding: "6px 12px", borderRadius: "4px", cursor: "pointer" }}
-                    onClick={() => navigate(`/departamentos/${e.id}`)}
-                  >
-                    Ver
-                  </button>
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <button className="edit-btn" onClick={() => handleEdit(e)}>
-                      Editar
-                    </button>
-                    <button className="delete-btn" onClick={() => handleDelete(e.id, e.address)}>
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        
+        <DataTable
+          data={edificios}
+          columns={columns}
+          emptyMessage="No hay edificios registrados"
+        />
+        
         <button
           className="add-btn"
+          style={{ marginTop: "20px" }}
           onClick={() => {
             setEditingEdificio(null);
             setShowModal(true);

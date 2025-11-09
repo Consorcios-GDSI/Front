@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { ColumnDef } from "@tanstack/react-table";
 import ModalDepartamento from "../components/ModalDepartamento";
-
-interface Departamento {
-  apartment_name: string;
-  unit_number: number;
-  resident_dni: number | null;
-  building_id: number;
-}
+import DataTable from "../components/DataTable";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
+import { Apartment } from "../types/apartment";
+import { API_BASE_URL } from "../config";
 
 interface DepartamentoForm {
   apartment_name: string;
@@ -18,15 +17,16 @@ interface DepartamentoForm {
 function Departamentos() {
   const { id } = useParams();
   const buildingId = Number(id);
-  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [departamentos, setDepartamentos] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   const fetchDepartamentos = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/apartments/${buildingId}`);
+      const res = await fetch(`${API_BASE_URL}/apartments/${buildingId}`);
       if (!res.ok) throw new Error("Error al obtener departamentos");
       const data = await res.json();
       setDepartamentos(data);
@@ -44,17 +44,21 @@ function Departamentos() {
 
   const handleSave = async (nuevo: DepartamentoForm) => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/apartments", {
+      const response = await fetch(`${API_BASE_URL}/apartments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nuevo),
       });
-      if (!response.ok) throw new Error("Error creando departamento");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       await fetchDepartamentos();
+      success("Departamento creado exitosamente");
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      alert("No se pudo crear el departamento");
+      showError(err instanceof Error ? err.message : "No se pudo crear el departamento");
     }
   };
 
@@ -62,16 +66,20 @@ function Departamentos() {
     if (!window.confirm(`¿Está seguro que desea eliminar el departamento ${apartmentName}?`)) return;
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/apartments/${buildingId}/${unitNumber}`,
+        `${API_BASE_URL}/apartments/${buildingId}/${unitNumber}`,
         {
           method: "DELETE",
         }
       );
-      if (!response.ok) throw new Error("Error eliminando departamento");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       await fetchDepartamentos();
+      success("Departamento eliminado exitosamente");
     } catch (err) {
       console.error(err);
-      alert("No se pudo eliminar el departamento");
+      showError(err instanceof Error ? err.message : "No se pudo eliminar el departamento");
     }
   };
 
@@ -79,21 +87,69 @@ function Departamentos() {
     if (!window.confirm(`¿Está seguro que desea desasignar el residente del departamento ${apartmentName}?`)) return;
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/apartments/${buildingId}/${unitNumber}`,
+        `${API_BASE_URL}/apartments/${buildingId}/${unitNumber}`,
         {
           method: "PUT",
         }
       );
-      if (!response.ok) throw new Error("Error desasignando residente");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
       await fetchDepartamentos();
+      success("Residente desasignado exitosamente");
     } catch (err) {
       console.error(err);
-      alert("No se pudo desasignar el residente");
+      showError(err instanceof Error ? err.message : "No se pudo desasignar el residente");
     }
   };
 
+  const columns = useMemo<ColumnDef<Apartment>[]>(
+    () => [
+      {
+        accessorKey: "apartment_name",
+        header: "Nombre Departamento",
+      },
+      {
+        accessorKey: "unit_number",
+        header: "Número de Unidad",
+      },
+      {
+        accessorKey: "resident_dni",
+        header: "DNI del Residente",
+        cell: (info) => info.getValue() ?? "-",
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <div style={{ display: "flex", gap: "10px" }}>
+            {row.original.resident_dni && (
+              <button 
+                className="edit-btn" 
+                onClick={() => handleUnassignResident(row.original.unit_number, row.original.apartment_name)}
+                title="Desasignar residente"
+              >
+                Desasignar
+              </button>
+            )}
+            <button
+              className="delete-btn"
+              onClick={() => handleDelete(row.original.unit_number, row.original.apartment_name)}
+            >
+              Eliminar
+            </button>
+          </div>
+        ),
+        enableSorting: false,
+      },
+    ],
+    []
+  );
+
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
         <h2>Departamentos del Edificio {buildingId}</h2>
         {loading ? (
@@ -101,44 +157,11 @@ function Departamentos() {
         ) : error ? (
           <p style={{ color: "red", textAlign: "center" }}>{error}</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre Departamento</th>
-                <th>Número de Unidad</th>
-                <th>DNI del Residente</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departamentos.map((d, idx) => (
-                <tr key={idx}>
-                  <td>{d.apartment_name}</td>
-                  <td>{d.unit_number}</td>
-                  <td>{d.resident_dni ?? "-"}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      {d.resident_dni && (
-                        <button 
-                          className="edit-btn" 
-                          onClick={() => handleUnassignResident(d.unit_number, d.apartment_name)}
-                          title="Desasignar residente"
-                        >
-                          Desasignar
-                        </button>
-                      )}
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(d.unit_number, d.apartment_name)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            data={departamentos}
+            columns={columns}
+            emptyMessage="No hay departamentos en este edificio"
+          />
         )}
         <button
           className="add-btn"

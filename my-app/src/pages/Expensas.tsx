@@ -1,4 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import DataTable from "../components/DataTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { useToast } from "../hooks/useToast";
+import { handleAPIError } from "../utils/errorHandler";
+import { Apartment } from "../types/apartment";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 interface BillingStatement {
   id: number;
@@ -18,20 +25,6 @@ interface BillingStatement {
   due_date: string;
   paid_date: string | null;
 }
-
-interface Building {
-  id: number;
-  address: string;
-}
-
-interface Apartment {
-  apartment_name: string;
-  unit_number: number;
-  building_id: number;
-  resident_dni: number | null;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 const PAYMENT_STATUS_LABELS: { [key: string]: string } = {
   pending: "Pendiente",
@@ -59,6 +52,7 @@ function Expensas() {
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [reconciling, setReconciling] = useState(false);
+  const { success, error: showError, ToastContainer } = useToast();
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -85,7 +79,7 @@ function Expensas() {
       }
     } catch (error) {
       console.error("Error cargando edificios:", error);
-      alert("Error al cargar los edificios");
+      showError("Error al cargar los edificios");
     }
   };
 
@@ -95,9 +89,13 @@ function Expensas() {
       const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
       if (!response.ok) throw new Error("Error al cargar departamentos");
       const data = await response.json();
+      if (Array.isArray(data)) {
+        data.sort((a: Apartment, b: Apartment) => (a.unit_number ?? 0) - (b.unit_number ?? 0));
+      }
       setApartments(data);
     } catch (error) {
       console.error("Error cargando departamentos:", error);
+      showError("Error al cargar departamentos");
     }
   };
 
@@ -115,14 +113,15 @@ function Expensas() {
           setBillingStatements([]);
           return;
         }
-        throw new Error("Error al cargar expensas");
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
       setBillingStatements(data);
     } catch (error) {
       console.error("Error cargando expensas:", error);
-      alert("Error al cargar las expensas");
+      showError(error instanceof Error ? error.message : "Error al cargar las expensas");
     } finally {
       setLoading(false);
     }
@@ -130,7 +129,7 @@ function Expensas() {
 
   const handleCalculate = async (recalculate: boolean = false) => {
     if (!selectedBuildingId) {
-      alert("Seleccione un edificio");
+      showError("Seleccione un edificio");
       return;
     }
 
@@ -156,16 +155,16 @@ function Expensas() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Error al calcular expensas");
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setBillingStatements(data);
-      alert(`Expensas calculadas exitosamente para ${data.length} departamentos`);
+      success(`Expensas calculadas exitosamente para ${data.length} departamentos`);
     } catch (error: any) {
       console.error("Error calculando expensas:", error);
-      alert(error.message || "Error al calcular las expensas");
+      showError(error instanceof Error ? error.message : "Error al calcular las expensas");
     } finally {
       setCalculating(false);
     }
@@ -173,7 +172,7 @@ function Expensas() {
 
   const handleReconcile = async () => {
     if (!selectedBuildingId) {
-      alert("Seleccione un edificio");
+      showError("Seleccione un edificio");
       return;
     }
 
@@ -196,21 +195,18 @@ function Expensas() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Error al reconciliar pagos");
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
       await loadBillingStatements(); // Recargar datos
       
-      alert(
-        `Reconciliación completada:\n\n` +
-        `Total reconciliado: $${result.total_reconciled?.toFixed(2) || 0}\n` +
-        `Departamentos actualizados: ${result.reconciled_count || 0}`
+      success(
+        `Cierre completado`
       );
     } catch (error: any) {
       console.error("Error reconciliando pagos:", error);
-      alert(error.message || "Error al reconciliar los pagos");
+      showError(error instanceof Error ? error.message : "Error al reconciliar los pagos");
     } finally {
       setReconciling(false);
     }
@@ -226,12 +222,16 @@ function Expensas() {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Error al eliminar expensa");
+      if (!response.ok) {
+        const errorMessage = await handleAPIError(response);
+        throw new Error(errorMessage);
+      }
 
       await loadBillingStatements();
+      success("Expensa eliminada exitosamente");
     } catch (error) {
       console.error("Error eliminando expensa:", error);
-      alert("Error al eliminar la expensa");
+      showError(error instanceof Error ? error.message : "Error al eliminar la expensa");
     }
   };
 
@@ -241,9 +241,111 @@ function Expensas() {
     return apt ? apt.apartment_name : "";
   };
 
+  const columns = useMemo<ColumnDef<BillingStatement>[]>(
+    () => [
+      {
+        accessorKey: "apartment_unit_number",
+        header: "Depto",
+        size: 80,
+      },
+      {
+        id: "nombre",
+        header: "Nombre",
+        cell: ({ row }) => getApartmentName(row.original.apartment_unit_number),
+      },
+      {
+        accessorKey: "particular_expenses",
+        header: "Gastos Particulares",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "shared_expenses",
+        header: "Gastos Comunes",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "previous_balance",
+        header: "Saldo Anterior",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "interest_charges",
+        header: "Intereses",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "previous_credit",
+        header: "Crédito",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "total_amount",
+        header: "Total",
+        cell: (info) => <strong>${Number(info.getValue()).toFixed(2)}</strong>,
+      },
+      {
+        accessorKey: "paid_amount",
+        header: "Pagado",
+        cell: (info) => `$${Number(info.getValue()).toFixed(2)}`,
+      },
+      {
+        accessorKey: "balance",
+        header: "Saldo",
+        cell: (info) => {
+          const value = Number(info.getValue());
+          return (
+            <span style={{ color: value < 0 ? "green" : value > 0 ? "red" : "black" }}>
+              ${value.toFixed(2)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "payment_status",
+        header: "Estado",
+        cell: (info) => {
+          const status = String(info.getValue());
+          return (
+            <span
+              style={{
+                padding: "4px 8px",
+                borderRadius: "4px",
+                backgroundColor: PAYMENT_STATUS_COLORS[status] || "#999",
+                color: "white",
+                fontSize: "12px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {PAYMENT_STATUS_LABELS[status] || status}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "due_date",
+        header: "Vencimiento",
+        cell: (info) => new Date(String(info.getValue())).toLocaleDateString("es-ES"),
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => (
+          <button className="delete-btn" onClick={() => handleDelete(row.original.id)}>
+            Eliminar
+          </button>
+        ),
+        enableSorting: false,
+      },
+    ],
+    [apartments]
+  );
+
   return (
     <main className="main-container">
+      <ToastContainer />
       <div className="table-container">
+        <h2>Gestión de Expensas</h2>
+        
         {/* Controles superiores */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "15px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -256,7 +358,7 @@ function Expensas() {
                 id="building-select"
                 value={selectedBuildingId || ""}
                 onChange={(e) => setSelectedBuildingId(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px" }}
+                style={{ padding: "8px", fontSize: "14px", borderRadius: '6px' }}
               >
                 <option value="" disabled>
                   Seleccione un edificio
@@ -275,7 +377,7 @@ function Expensas() {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", marginRight: "5px" }}
+                style={{ padding: "8px", fontSize: "14px", marginRight: "5px", borderRadius: '6px' }}
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                   <option key={month} value={month}>
@@ -287,7 +389,7 @@ function Expensas() {
                 type="number"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                style={{ padding: "8px", fontSize: "14px", width: "100px" }}
+                style={{ padding: "8px", fontSize: "14px", width: "100px", borderRadius: '6px' }}
                 min="2000"
                 max="2100"
               />
@@ -297,10 +399,7 @@ function Expensas() {
           {/* Botones de acción */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button
-              className="px-4 py-2 rounded-xl font-semibold shadow-md 
-bg-gradient-to-r from-blue-500 to-blue-700 text-white 
-hover:-translate-y-[1px] hover:shadow-lg active:translate-y-0 
-transition-all"
+              className="add-btn"
               onClick={() => handleCalculate(false)}
               disabled={calculating}
               style={{ opacity: calculating ? 0.6 : 1 }}
@@ -308,10 +407,7 @@ transition-all"
               {calculating ? "Calculando..." : "Calcular Expensas"}
             </button>
             <button
-              className="px-4 py-2 rounded-xl font-semibold shadow-md 
-bg-gradient-to-r from-blue-500 to-blue-700 text-white 
-hover:-translate-y-[1px] hover:shadow-lg active:translate-y-0 
-transition-all"
+              className="add-btn"
               onClick={() => handleCalculate(true)}
               disabled={calculating}
               style={{ opacity: calculating ? 0.6 : 1 }}
@@ -319,10 +415,7 @@ transition-all"
               Recalcular
             </button>
             <button
-              className="px-4 py-2 rounded-xl font-semibold shadow-md 
-bg-gradient-to-r from-blue-500 to-blue-700 text-white 
-hover:-translate-y-[1px] hover:shadow-lg active:translate-y-0 
-transition-all"
+              className="add-btn"
               onClick={handleReconcile}
               disabled={reconciling}
               style={{ opacity: reconciling ? 0.6 : 1 }}
@@ -333,9 +426,7 @@ transition-all"
         </div>
 
         {/* Tabla de expensas */}
-        {loading ? (
-          <p>Cargando expensas...</p>
-        ) : billingStatements.length === 0 ? (
+        {billingStatements.length === 0 && !loading ? (
           <div style={{ textAlign: "center", padding: "40px" }}>
             <p style={{ fontSize: "18px", color: "#666" }}>
               No hay expensas calculadas para este período.
@@ -345,62 +436,12 @@ transition-all"
             </p>
           </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Depto</th>
-                <th>Nombre</th>
-                <th>Gastos Particulares</th>
-                <th>Gastos Comunes</th>
-                <th>Saldo Anterior</th>
-                <th>Intereses</th>
-                <th>Crédito</th>
-                <th>Total</th>
-                <th>Pagado</th>
-                <th>Saldo</th>
-                <th>Estado</th>
-                <th>Vencimiento</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {billingStatements.map((bs) => (
-                <tr key={bs.id}>
-                  <td>{bs.apartment_unit_number}</td>
-                  <td>{getApartmentName(bs.apartment_unit_number)}</td>
-                  <td>${bs.particular_expenses.toFixed(2)}</td>
-                  <td>${bs.shared_expenses.toFixed(2)}</td>
-                  <td>${bs.previous_balance.toFixed(2)}</td>
-                  <td>${bs.interest_charges.toFixed(2)}</td>
-                  <td>${bs.previous_credit.toFixed(2)}</td>
-                  <td style={{ fontWeight: "bold" }}>${bs.total_amount.toFixed(2)}</td>
-                  <td>${bs.paid_amount.toFixed(2)}</td>
-                  <td style={{ color: bs.balance < 0 ? "green" : bs.balance > 0 ? "red" : "black" }}>
-                    ${bs.balance.toFixed(2)}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        backgroundColor: PAYMENT_STATUS_COLORS[bs.payment_status] || "#999",
-                        color: "white",
-                        fontSize: "12px",
-                      }}
-                    >
-                      {PAYMENT_STATUS_LABELS[bs.payment_status] || bs.payment_status}
-                    </span>
-                  </td>
-                  <td>{new Date(bs.due_date).toLocaleDateString("es-ES")}</td>
-                  <td>
-                    <button className="delete-btn" onClick={() => handleDelete(bs.id)}>
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            data={billingStatements}
+            columns={columns}
+            loading={loading}
+            emptyMessage="No hay expensas calculadas para este período"
+          />
         )}
       </div>
     </main>
