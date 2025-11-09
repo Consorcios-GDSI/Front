@@ -307,7 +307,6 @@ function Pagos() {
         {/* Botón de añadir pago debajo de la tabla */}
         <button
           className="btn-fancy"   
-          style={{ ['--btn-hover' as any]: '#dc3545' } as React.CSSProperties}
           onClick={() => {
             setShowModal(true);
             setEditingPago(null);

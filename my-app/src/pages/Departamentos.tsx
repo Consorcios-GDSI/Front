@@ -18,6 +18,7 @@ function Departamentos() {
   const { id } = useParams();
   const buildingId = Number(id);
   const [departamentos, setDepartamentos] = useState<Apartment[]>([]);
+  const [buildingAddress, setBuildingAddress] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -38,8 +39,23 @@ function Departamentos() {
     }
   };
 
+  const fetchBuilding = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/buildings`);
+      if (!res.ok) throw new Error("Error al obtener edificio");
+      const buildings = await res.json();
+      const building = buildings.find((b: any) => b.id === buildingId);
+      if (building) {
+        setBuildingAddress(building.address);
+      }
+    } catch (err) {
+      console.error("Error al obtener edificio:", err);
+    }
+  };
+
   useEffect(() => {
     fetchDepartamentos();
+    fetchBuilding();
   }, [buildingId]);
 
   const handleSave = async (nuevo: DepartamentoForm) => {
@@ -152,7 +168,7 @@ function Departamentos() {
     <main className="main-container">
       <ToastContainer />
       <div className="table-container">
-        <h2>Departamentos del Edificio {buildingId}</h2>
+        <h2>Departamentos de {buildingAddress || buildingId}</h2>
         {loading ? (
           <p style={{ textAlign: "center" }}>Cargando...</p>
         ) : error ? (
