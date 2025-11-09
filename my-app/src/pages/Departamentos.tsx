@@ -5,15 +5,8 @@ import ModalDepartamento from "../components/ModalDepartamento";
 import DataTable from "../components/DataTable";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
-
-interface Departamento {
-  apartment_name: string;
-  unit_number: number;
-  resident_dni: number | null;
-  building_id: number;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
+import { Apartment } from "../types/apartment";
+import { API_BASE_URL } from "../config";
 
 interface DepartamentoForm {
   apartment_name: string;
@@ -24,7 +17,7 @@ interface DepartamentoForm {
 function Departamentos() {
   const { id } = useParams();
   const buildingId = Number(id);
-  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [departamentos, setDepartamentos] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -111,7 +104,7 @@ function Departamentos() {
     }
   };
 
-  const columns = useMemo<ColumnDef<Departamento>[]>(
+  const columns = useMemo<ColumnDef<Apartment>[]>(
     () => [
       {
         accessorKey: "apartment_name",

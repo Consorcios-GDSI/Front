@@ -3,6 +3,9 @@ import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
+import { Apartment } from "../types/apartment";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 interface BillingStatement {
   id: number;
@@ -22,20 +25,6 @@ interface BillingStatement {
   due_date: string;
   paid_date: string | null;
 }
-
-interface Building {
-  id: number;
-  address: string;
-}
-
-interface Apartment {
-  apartment_name: string;
-  unit_number: number;
-  building_id: number;
-  resident_dni: number | null;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 const PAYMENT_STATUS_LABELS: { [key: string]: string } = {
   pending: "Pendiente",
@@ -100,6 +89,9 @@ function Expensas() {
       const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
       if (!response.ok) throw new Error("Error al cargar departamentos");
       const data = await response.json();
+      if (Array.isArray(data)) {
+        data.sort((a: Apartment, b: Apartment) => (a.unit_number ?? 0) - (b.unit_number ?? 0));
+      }
       setApartments(data);
     } catch (error) {
       console.error("Error cargando departamentos:", error);
@@ -207,11 +199,10 @@ function Expensas() {
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
       await loadBillingStatements(); // Recargar datos
       
       success(
-        `Reconciliación completada: Total reconciliado $${result.total_reconciled?.toFixed(2) || 0}, ${result.reconciled_count || 0} departamentos actualizados`
+        `Cierre completado`
       );
     } catch (error: any) {
       console.error("Error reconciliando pagos:", error);

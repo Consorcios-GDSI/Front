@@ -6,22 +6,17 @@ import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
-
-interface Edificio {
-  id: number;
-  address: string;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 function Edificios() {
-  const [edificios, setEdificios] = useLocalStorage<Edificio[]>(
+  const [edificios, setEdificios] = useLocalStorage<Building[]>(
     "edificiosData",
     []
   );
 
   const [showModal, setShowModal] = useState(false);
-  const [editingEdificio, setEditingEdificio] = useState<Edificio | null>(null);
+  const [editingEdificio, setEditingEdificio] = useState<Building | null>(null);
   const navigate = useNavigate();
   const { success, error, ToastContainer } = useToast();
 
@@ -37,7 +32,7 @@ function Edificios() {
       });
   }, []);
 
-  const handleSave = async (nuevo: Edificio) => {
+  const handleSave = async (nuevo: Building) => {
     if (editingEdificio) {
       // Editar dirección en el backend
       try {
@@ -106,12 +101,12 @@ function Edificios() {
     }
   };
 
-  const handleEdit = (e: Edificio) => {
+  const handleEdit = (e: Building) => {
     setEditingEdificio(e);
     setShowModal(true);
   };
 
-  const columns = useMemo<ColumnDef<Edificio>[]>(
+  const columns = useMemo<ColumnDef<Building>[]>(
     () => [
       {
         accessorKey: "id",

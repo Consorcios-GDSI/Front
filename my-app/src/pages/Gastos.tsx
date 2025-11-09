@@ -4,6 +4,9 @@ import DataTable from "../components/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler";
+import { Apartment } from "../types/apartment";
+import { Building } from "../types/building";
+import { API_BASE_URL } from "../config";
 
 interface Gasto {
   id: number;
@@ -14,20 +17,6 @@ interface Gasto {
   descripcion: string;
   building_id: number;
 }
-
-interface Apartment {
-  apartment_name: string;
-  unit_number: number;
-  building_id: number;
-  resident_dni: number | null;
-}
-
-interface Building {
-  id: number;
-  address: string;
-}
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 function Gastos() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
@@ -45,7 +34,6 @@ function Gastos() {
     loadApartments();
   }, []);
 
-  // Cargar gastos cuando cambia el edificio seleccionado
   useEffect(() => {
     if (selectedBuildingId) {
       loadApartments();
@@ -104,6 +92,9 @@ function Gastos() {
       const response = await fetch(`${API_BASE_URL}/apartments/${selectedBuildingId}`);
       if (!response.ok) throw new Error("Error al cargar departamentos");
       const data = await response.json();
+      if (Array.isArray(data)) {
+          data.sort((a: Apartment, b: Apartment) => (a.unit_number ?? 0) - (b.unit_number ?? 0));
+        }
       setApartments(data);
       
       // Seleccionar el primer building_id disponible

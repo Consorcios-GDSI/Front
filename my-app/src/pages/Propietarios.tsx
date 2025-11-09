@@ -5,13 +5,12 @@ import PropietarioModal from "../components/Modal";
 import DataTable from "../components/DataTable";
 import { useToast } from "../hooks/useToast";
 import { handleAPIError } from "../utils/errorHandler"; 
+import { API_BASE_URL } from "../config";
 
 // Tipos, interfaces y datos simulados
 interface Department {
   number: string;
 }
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 interface Building {
   id: number;
